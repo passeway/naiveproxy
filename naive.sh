@@ -37,7 +37,7 @@ route {
     header_up  Host  {upstream_hostport}
     header_up  X-Forwarded-Host  {host}
   }
-}" > /etc/caddy/Caddyfile
+}" > /root/Caddyfile
 
 
 # 重载 Caddy 配置

@@ -24,7 +24,7 @@ USERNAME=$(shuf -zer -n5 {a..z} | tr -d '\0')
 PASSWORD=$(shuf -zer -n5 {a..z} | tr -d '\0')
 
 # 创建 Caddyfile 文件并写入配置
-echo "443, $DOMAIN
+CADDY_CONFIG="443, $DOMAIN
 tls admin@outlook.com
 route {
   forward_proxy {
@@ -33,25 +33,29 @@ route {
     hide_via
     probe_resistance
   }
-  reverse_proxy  https://demo.cloudreve.org  {
-    header_up  Host  {upstream_hostport}
-    header_up  X-Forwarded-Host  {host}
+  reverse_proxy https://demo.cloudreve.org {
+    header_up Host {upstream_hostport}
+    header_up X-Forwarded-Host {host}
   }
-}" > /root/Caddyfile
+}"
 
+echo "$CADDY_CONFIG" > /root/Caddyfile
 
 # 重载 Caddy 配置
-./caddy reload
+caddy reload --config /root/Caddyfile
 echo "Caddy 配置已重载。"
 
 # 在后台运行 Caddy
-./caddy start
+caddy start
 echo "Caddy 已在后台启动。"
 
 # 确保 Caddy 已经成功启动
-./caddy status
-# 输出jsonp配置
-echo "{
-  "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://$USERNAME:$PASSWORD@$DOMAIN"
+caddy status
+
+# 输出 JSON 格式的代理配置
+JSON_CONFIG="{
+  \"listen\": \"socks://127.0.0.1:1080\",
+  \"proxy\": \"https://$USERNAME:$PASSWORD@$DOMAIN\"
 }"
+
+echo "$JSON_CONFIG"

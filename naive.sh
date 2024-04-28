@@ -7,7 +7,6 @@ GREEN="\033[32m"
 YELLOW="\033[33m"
 PLAIN="\033[0m"
 
-# Function to output colored text
 red() {
     echo -e "${RED}$1${PLAIN}"
 }
@@ -20,10 +19,10 @@ yellow() {
     echo -e "${YELLOW}$1${PLAIN}"
 }
 
-# Check for root privileges
+# 检查root权限
 [[ $EUID -ne 0 ]] && red "请以root用户运行脚本" && exit 1
 
-# Detect system and set package manager commands
+# 检测系统和设置包管理命令
 REGEX=("debian" "ubuntu" "centos|red hat|kernel|oracle linux|alma|rocky" "fedora")
 PACKAGE_UPDATE=("apt-get update" "apt-get update" "yum -y update" "yum -y update")
 PACKAGE_INSTALL=("apt -y install" "apt -y install" "yum -y install" "yum -y install")
@@ -47,13 +46,13 @@ done
 
 [[ -z $SYSTEM ]] && red "不支持该操作系统" && exit 1
 
-# Ensure curl is installed
+# 确保curl已安装
 if ! command -v curl &> /dev/null; then
     [[ ! $SYSTEM == "centos" ]] && ${PACKAGE_UPDATE[i]}
     ${PACKAGE_INSTALL[i]} curl
 fi
 
-# Detect CPU architecture
+# 检测CPU架构
 archAffix() {
     case "$(uname -m)" in
         x86_64 | amd64) echo 'amd64' ;;
@@ -62,9 +61,9 @@ archAffix() {
     esac
 }
 
-# Function to install NaiveProxy
+# 安装NaiveProxy
 installProxy() {
-    # Install dependencies and caddy
+    # 安装Caddy和相关依赖
     [[ ! $SYSTEM == "centos" ]] && ${PACKAGE_UPDATE[i]}
     ${PACKAGE_INSTALL[i]} curl wget sudo qrencode
 
@@ -73,23 +72,22 @@ installProxy() {
     chmod +x /usr/bin/caddy
 
     mkdir /etc/caddy
-    
-    # Randomly assign ports and generate other required information
+
+    # 随机分配端口
     proxyport=$(shuf -i 2000-65535 -n 1)
     caddyport=$(shuf -i 2000-65535 -n 1)
     
-    yellow "NaiveProxy 的代理端口是：$proxyport"
-    yellow "Caddy 监听端口是：$caddyport"
-
-    domain="example.com"  # Default domain
-    proxyname=$(date +%s%N | md5sum | cut -c 1-16)  # Random username
-    proxypwd=$(date +%s%N | md5sum | cut -c 1-16)  # Random password
-
-    # Default obfuscation site
+    # 默认伪装网址
     proxysite="demo.cloudreve.org"
-    yellow "伪装站点为：https://$proxysite"
+    
+    # 生成用户名和密码
+    proxyname=$(date +%s%N | md5sum | cut -c 1-16)
+    proxypwd=$(date +%s%N | md5sum | cut -c 1-16)
 
-    # Create Caddy configuration
+    # 输入域名
+    read -rp "请输入NaiveProxy的域名：" domain
+
+    # 创建Caddy配置文件
     cat <<EOF >/etc/caddy/Caddyfile
 {
     http_port $caddyport
@@ -110,7 +108,7 @@ route {
 }
 EOF
 
-    # Create client configuration
+    # 创建客户端配置
     mkdir -p /root/naive
     cat <<EOF > /root/naive/naive-client.json
 {
@@ -119,8 +117,8 @@ EOF
     "log": ""
 }
 EOF
-    
-    # Create systemd service for Caddy
+
+    # 创建systemd服务
     cat <<EOF >/etc/systemd/system/caddy.service
 [Unit]
 Description=Caddy
@@ -146,7 +144,7 @@ EOF
     green "NaiveProxy 已成功安装并启动！"
 }
 
-# Function to uninstall NaiveProxy
+# 卸载NaiveProxy
 uninstallProxy() {
     systemctl stop caddy
     rm -rf /etc/caddy
@@ -154,7 +152,7 @@ uninstallProxy() {
     green "NaiveProxy 已卸载"
 }
 
-# Menu to manage the script
+# 菜单选择
 menu() {
     clear
     echo -e "${GREEN}NaiveProxy 管理脚本${PLAIN}"
@@ -171,5 +169,4 @@ menu() {
     esac
 }
 
-# Display the menu and handle user input
 menu

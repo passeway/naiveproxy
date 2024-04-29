@@ -16,46 +16,38 @@ apt-get install -y golang-go
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
 
-# 询问用户输入域名
-read -p "请输入您的域名: " DOMAIN
-
-# 生成随机 5 位数的用户名和密码
-USERNAME=$(shuf -zer -n5 {a..z} | tr -d '\0')
-PASSWORD=$(shuf -zer -n5 {a..z} | tr -d '\0')
-
 # 创建 Caddyfile 文件并写入配置
-CADDY_CONFIG="443, $DOMAIN
+
+touch Caddyfile
+
+:443, 已解析域名
 tls admin@outlook.com
 route {
-  forward_proxy {
-    basic_auth $USERNAME $PASSWORD
-    hide_ip
-    hide_via
-    probe_resistance
+ forward_proxy {
+   basic_auth admin passeway 
+   hide_ip
+   hide_via
+   probe_resistance
   }
-  reverse_proxy https://demo.cloudreve.org {
-    header_up Host {upstream_hostport}
-    header_up X-Forwarded-Host {host}
+ reverse_proxy  https://demo.cloudreve.org  {
+   header_up  Host  {upstream_hostport}
+   header_up  X-Forwarded-Host  {host}
   }
-}"
+}
 
-echo "$CADDY_CONFIG" > /root/Caddyfile
+# caddy常用指令：
+前台运行caddy：./caddy run
 
-# 重载 Caddy 配置
-caddy reload --config /root/Caddyfile
-echo "Caddy 配置已重载。"
+后台运行caddy：./caddy start
 
-# 在后台运行 Caddy
-caddy start
-echo "Caddy 已在后台启动。"
+停止caddy：./caddy stop
 
-# 确保 Caddy 已经成功启动
-caddy status
+重载配置：./caddy reload
 
 # 输出 JSON 格式的代理配置
-JSON_CONFIG="{
-  \"listen\": \"socks://127.0.0.1:1080\",
-  \"proxy\": \"https://$USERNAME:$PASSWORD@$DOMAIN\"
-}"
+{
+  "listen": "socks://127.0.0.1:1080",
+  "proxy": "https://admin:passeway@example.com"
+}
 
-echo "$JSON_CONFIG"
+caddy配置守护进程（开机自启）：https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon

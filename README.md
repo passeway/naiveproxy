@@ -46,7 +46,7 @@ route {
   }
 }
 ```
-# 使 Caddy 可执行并将 caddy 二进制文件移动到您的路径中，并将您的 Caddyfile 放在/etc/caddy/
+使 Caddy 可执行并将 caddy 二进制文件移动到您的路径中，并将您的 Caddyfile 放在/etc/caddy/
 ```
 chmod +x caddy
 mv caddy /usr/bin/
@@ -58,7 +58,7 @@ mv Caddyfile /etc/caddy/
 ```
 /usr/bin/caddy run --config /etc/caddy/Caddyfile
 ```
-# 为 caddy 创建唯一的 Linux 组和用户
+为 caddy 创建唯一的 Linux 组和用户
 ```
 groupadd --system caddy
 
@@ -70,7 +70,7 @@ useradd --system \
     --comment "Caddy web server" \
     caddy
 ```
-# 接下来，使用以下内容创建：caddy.service/etc/systemd/system/
+使用以下内容创建：caddy.service
 ```
 touch /etc/systemd/system/caddy.service
 ```

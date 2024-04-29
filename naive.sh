@@ -12,6 +12,8 @@ apt-get update
 # 安装 Go
 apt-get install -y golang-go
 
+# 测试 Go
+
 # 使用 Go 编译 Caddy
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive

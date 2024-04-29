@@ -117,6 +117,11 @@ systemctl status caddy
 ```
 systemctl reload caddy
 ```
+立即停止 Caddy 服务
+```
+systemctl stop caddy
+```
+
 
 
 # JSON 格式的代理配置

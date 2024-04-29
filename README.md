@@ -31,6 +31,9 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 touch Caddyfile
 ```
 ```
+nano Caddyfile
+```
+```
 :443, 已解析域名
 tls admin@outlook.com
 route {
@@ -70,9 +73,13 @@ useradd --system \
     --comment "Caddy web server" \
     caddy
 ```
-使用以下内容创建：caddy.service
+创建caddy.service
 ```
 touch /etc/systemd/system/caddy.service
+```
+编辑caddy.service
+```
+nano /etc/systemd/system/caddy.service
 ```
 ```
 [Unit]
@@ -97,30 +104,31 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 ```
 # 使用 systemd 启动 caddy 服务
-重新加载 systemd 的配置文件
+加载 systemd 服务
 ```
 systemctl daemon-reload
 ```
-将 Caddy 服务设为开机自启
+自启 Caddy 服务
 ```
 systemctl enable caddy
 ```
-立即启动 Caddy 服务
+启动 Caddy 服务
 ```
 systemctl start caddy
 ```
-检查 Caddy 当前状态
+检查 Caddy 服务
 ```
 systemctl status caddy
 ```
-重新加载 caddy 配置文件
+重启 caddy 服务
 ```
 systemctl reload caddy
 ```
-立即停止 Caddy 服务
+停止 Caddy 服务
 ```
 systemctl stop caddy
 ```
+
 
 
 

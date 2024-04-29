@@ -13,6 +13,7 @@ apt-get update
 apt-get install -y golang-go
 
 # 测试 Go
+go version
 
 # 使用 Go 编译 Caddy
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest

@@ -126,4 +126,5 @@ systemctl reload caddy
   "proxy": "https://admin:passeway@example.com"
 }
 ```
-caddy配置守护进程（开机自启）：https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon
+项目地址
+https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon

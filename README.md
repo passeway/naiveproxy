@@ -1,40 +1,30 @@
 # 安装 Go
-安装必要的工具
 ```
-apt-get install -y software-properties-common
-```
-添加 Golang 的 PPA
-```
-add-apt-repository -y ppa:longsleep/golang-backports
-```
-更新软件包列表
-```
-apt-get update
-```
-安装 Go
-```
-apt-get install -y golang-go
-```
-测试 Go
-```
+apt-get install -y software-properties-common && \
+add-apt-repository -y ppa:longsleep/golang-backports && \
+apt-get update && \
+apt-get install -y golang-go && \
 go version
+
 ```
 # 使用 Go 编译 Caddy
 ```
-go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
+~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
+chmod +x caddy && \
+mv caddy /usr/bin/
+
 ```
-```
-~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-```
+
 # 创建 Caddyfile 文件并写入配置
 ```
-touch Caddyfile
+mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
-nano Caddyfile
-```
-```
-:443, 已解析域名
+{
+http_port 8880
+}
+:8080, 已解析域名:8080
 tls admin@outlook.com
 route {
  forward_proxy {
@@ -49,19 +39,23 @@ route {
   }
 }
 ```
-使 Caddy 可执行并将 caddy 二进制文件移动到您的路径中，并将您的 Caddyfile 放在/etc/caddy/
+校验配置文件是否正确
 ```
-chmod +x caddy
-mv caddy /usr/bin/
+cd /etc/caddy && caddy validate Caddyfile 
 ```
+
+格式化后覆盖原文件
 ```
-mkdir /etc/caddy
-mv Caddyfile /etc/caddy/
+caddy fmt --overwrite Caddyfile 
 ```
+
+输出当前caddy包含的模块
 ```
-/usr/bin/caddy run --config /etc/caddy/Caddyfile
+caddy list-modules && cd ~
 ```
-为 caddy 创建唯一的 Linux 组和用户
+
+
+创建caddy唯一的Linux 组和用户
 ```
 groupadd --system caddy
 
@@ -75,11 +69,7 @@ useradd --system \
 ```
 创建caddy.service
 ```
-touch /etc/systemd/system/caddy.service
-```
-编辑caddy.service
-```
-nano /etc/systemd/system/caddy.service
+touch /etc/systemd/system/caddy.service && nano /etc/systemd/system/caddy.service
 ```
 ```
 [Unit]
@@ -104,27 +94,27 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 ```
 # 使用 systemd 启动 caddy 服务
-加载 systemd 服务
+加载 systemd
 ```
 systemctl daemon-reload
 ```
-自启 Caddy 服务
+自启 Caddy 
 ```
 systemctl enable caddy
 ```
-启动 Caddy 服务
+启动 Caddy 
 ```
 systemctl start caddy
 ```
-检查 Caddy 服务
+检查 Caddy 
 ```
 systemctl status caddy
 ```
-重启 caddy 服务
+重启 caddy 
 ```
 systemctl reload caddy
 ```
-停止 Caddy 服务
+停止 Caddy 
 ```
 systemctl stop caddy
 ```

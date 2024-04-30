@@ -39,22 +39,17 @@ route {
    header_up  X-Forwarded-Host  {host}
   }
 }
-```
-校验配置文件是否正确
-```
-caddy validate --config /etc/caddy/Caddyfile
-```
-格式化后覆盖原配置文件
+
+格式化Caddyfile后覆盖原配置文件
 ```
 caddy fmt --overwrite /etc/caddy/Caddyfile
 ```
-
-输出当前 caddy 包含的模块
 ```
-caddy list-modules && cd ~
+校验Caddyfile配置文件是否正确
 ```
-
-
+caddy validate --config /etc/caddy/Caddyfile
+```
+# 使用 systemd 启动 caddy 服务
 创建caddy唯一的Linux 组和用户
 ```
 groupadd --system caddy
@@ -67,7 +62,7 @@ useradd --system \
     --comment "Caddy web server" \
     caddy
 ```
-创建caddy.service
+创建Caddy服务的Systemd配置文件
 ```
 touch /etc/systemd/system/caddy.service && nano /etc/systemd/system/caddy.service
 ```
@@ -93,7 +88,7 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 [Install]
 WantedBy=multi-user.target
 ```
-# 使用 systemd 启动 caddy 服务
+
 加载 systemd
 ```
 systemctl daemon-reload
@@ -118,10 +113,6 @@ systemctl reload caddy
 ```
 systemctl stop caddy
 ```
-
-
-
-
 # JSON 格式的代理配置
 ```
 {

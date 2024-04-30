@@ -40,10 +40,10 @@ route {
   }
 }
 
+```
 格式化Caddyfile后覆盖原配置文件
 ```
 caddy fmt --overwrite /etc/caddy/Caddyfile
-```
 ```
 校验Caddyfile配置文件是否正确
 ```

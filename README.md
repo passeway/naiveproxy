@@ -42,12 +42,11 @@ route {
 ```
 校验配置文件是否正确
 ```
-cd /etc/caddy && caddy validate Caddyfile 
+caddy validate --config /etc/caddy/Caddyfile
 ```
-
-格式化后覆盖原文件
+格式化后覆盖原配置文件
 ```
-caddy fmt --overwrite Caddyfile 
+caddy fmt --overwrite /etc/caddy/Caddyfile
 ```
 
 输出当前 caddy 包含的模块

@@ -1,4 +1,5 @@
-# 安装 Go
+# 使用 Go 编译 Caddy
+安装 Go
 ```
 apt-get install -y software-properties-common && \
 add-apt-repository -y ppa:longsleep/golang-backports && \
@@ -7,7 +8,7 @@ apt-get install -y golang-go && \
 go version
 
 ```
-# 使用 Go 编译 Caddy
+编译 Caddy
 ```
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
@@ -49,7 +50,7 @@ cd /etc/caddy && caddy validate Caddyfile
 caddy fmt --overwrite Caddyfile 
 ```
 
-输出当前caddy包含的模块
+输出当前 caddy 包含的模块
 ```
 caddy list-modules && cd ~
 ```

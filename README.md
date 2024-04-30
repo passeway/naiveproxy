@@ -24,7 +24,7 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 {
 http_port 8880
 }
-:8080, 已解析域名:8080
+:8080, example.com:8080
 tls admin@outlook.com
 route {
  forward_proxy {
@@ -126,7 +126,7 @@ systemctl stop caddy
 ```
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://admin:passeway@example.com"
+  "proxy": "https://admin:passeway@example.com:8080"
 }
 ```
 项目地址

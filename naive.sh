@@ -79,28 +79,28 @@ fi
 
 # 检查Caddy是否成功编译
 if [[ ! -f /root/caddy ]]; then
-  echo "Caddy编译失败，/root/caddy文件不存在。"
+  echo "Caddy编译失败，/root/caddy文件不存在"
   exit 1
 fi
 
 # 移动Caddy到/usr/bin/并确保具有执行权限
-echo "移动Caddy到/usr/bin/..."
+echo "移动Caddy到/usr/bin/"
 if ! mv /root/caddy /usr/bin/; then
-  echo "无法将Caddy移动到/usr/bin/。"
+  echo "无法将Caddy移动到/usr/bin/"
   exit 1
 fi
 
 if ! chmod +x /usr/bin/caddy; then
-  echo "无法为Caddy设置执行权限。"
+  echo "无法为Caddy设置执行权限"
   exit 1
 else
-  echo "Caddy已成功移动到/usr/bin/并设置执行权限。"
+  echo "Caddy已成功移动到/usr/bin/。"
 fi
 
 # 创建并配置Caddyfile
-echo "正在创建和配置Caddyfile..."
+echo "正在创建和配置Caddyfile"
 if ! mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile; then
-  echo "无法创建Caddyfile。"
+  echo "无法创建Caddyfile"
   exit 1
 fi
 
@@ -126,17 +126,17 @@ EOF
 
 # 格式化并验证Caddyfile
 if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /etc/caddy/Caddyfile; then
-  echo "Caddyfile格式或验证失败。"
+  echo "Caddyfile格式或验证失败"
   exit 1
 fi
 
 # 创建systemd服务并配置Caddy服务
-echo "正在为Caddy创建systemd服务..."
+echo "正在为Caddy创建systemd服务"
 groupadd --system caddy
 useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
 
 if ! touch /etc/systemd/system/caddy.service; then
-  echo "无法创建caddy.service。"
+  echo "无法创建caddy.service"
   exit 1
 fi
 
@@ -164,21 +164,21 @@ WantedBy=multi-user.target
 EOF
 
 # 启动并验证Caddy服务
-echo "正在启动Caddy服务..."
+echo "正在启动Caddy服务"
 if ! systemctl daemon-reload || ! systemctl enable caddy || ! systemctl start caddy; then
-  echo "Caddy服务启动失败。"
+  echo "Caddy服务启动失败"
   exit 1
 fi
 
 if ! systemctl status caddy | grep "Active: active (running)"; then
-  echo "Caddy服务未正确启动。"
+  echo "Caddy服务未正确启动"
   exit 1
 else
-  echo "Caddy服务启动成功。"
+  echo "Caddy服务启动成功"
 fi
 
 # 输出Naiveproxy配置
-echo "Naiveproxy配置:"
+echo "Naiveproxy配置"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

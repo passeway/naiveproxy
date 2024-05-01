@@ -9,32 +9,6 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-# 下载最新脚本
-latest_script_url="https://raw.githubusercontent.com/passeway/naiveproxy/main/naive" 
-temp_script_path="/tmp/updated_script.sh"
-
-echo "正在下载最新脚本..."
-if ! curl -o "$temp_script_path" -s "$latest_script_url"; then
-  echo "无法下载最新脚本。请检查网络连接或URL。"
-  exit 1
-fi
-
-# 确保下载成功
-if [[ ! -f "$temp_script_path" ]]; then
-  echo "最新脚本未成功下载。"
-  exit 1
-fi
-
-# 确保新脚本具有执行权限
-if ! chmod +x "$temp_script_path"; then
-  echo "无法设置新脚本的执行权限。"
-  exit 1
-fi
-
-# 执行最新脚本
-echo "正在执行最新脚本..."
-exec "$temp_script_path"
-
 # 获取用户输入的域名
 read -p "请输入您的域名: " domain_name
 

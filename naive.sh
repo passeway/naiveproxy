@@ -26,7 +26,7 @@ resolved_ip=$(dig +short $domain_name | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
 
 # 检查域名是否解析到本机IP地址
 if [[ "$resolved_ip" != "$local_ip" ]]; then
-  echo "域名 $domain_name 未解析到本机IP地址 ($local_ip)。解析结果是: $resolved_ip"
+  echo "域名未解析到本机IP地址 ($local_ip)。解析结果是: $resolved_ip"
   exit 1
 fi
 
@@ -48,7 +48,7 @@ echo "随机生成的用户: $admin_user"
 echo "随机生成的密码: $admin_pass"
 
 # 更新和升级系统包
-echo "正在更新和升级系统包"
+echo "正在更新系统包"
 if ! apt-get update && apt-get upgrade -y; then
   echo "系统包更新失败。请检查网络连接或包管理器。"
   exit 1

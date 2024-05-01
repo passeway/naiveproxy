@@ -84,7 +84,6 @@ if [[ ! -f /root/caddy ]]; then
 fi
 
 # 移动Caddy到/usr/bin/并确保具有执行权限
-echo "移动Caddy到/usr/bin/"
 if ! mv /root/caddy /usr/bin/; then
   echo "无法将Caddy移动到/usr/bin/"
   exit 1
@@ -94,7 +93,7 @@ if ! chmod +x /usr/bin/caddy; then
   echo "无法为Caddy设置执行权限"
   exit 1
 else
-  echo "Caddy已成功移动到/usr/bin/。"
+  echo "Caddy成功移动到/usr/bin"
 fi
 
 # 创建并配置Caddyfile
@@ -131,7 +130,6 @@ if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /et
 fi
 
 # 创建systemd服务并配置Caddy服务
-echo "正在为Caddy创建systemd服务"
 groupadd --system caddy
 useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
 
@@ -164,7 +162,6 @@ WantedBy=multi-user.target
 EOF
 
 # 启动并验证Caddy服务
-echo "正在启动Caddy服务"
 if ! systemctl daemon-reload || ! systemctl enable caddy || ! systemctl start caddy; then
   echo "Caddy服务启动失败"
   exit 1
@@ -174,7 +171,7 @@ if ! systemctl status caddy | grep "Active: active (running)"; then
   echo "Caddy服务未正确启动"
   exit 1
 else
-  echo "Caddy服务启动成功"
+  echo "Caddy启动成功"
 fi
 
 # 输出Naiveproxy配置

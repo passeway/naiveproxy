@@ -18,6 +18,21 @@ if [[ -z "$domain_name" ]]; then
   exit 1
 fi
 
+# 获取本机IP地址
+local_ip=$(hostname -I | awk '{print $1}')
+
+# 使用dig查询域名的A记录
+resolved_ip=$(dig +short $domain_name | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
+
+# 检查域名是否解析到本机IP地址
+if [[ "$resolved_ip" != "$local_ip" ]]; then
+  echo "域名 $domain_name 未解析到本机IP地址 ($local_ip)。解析结果是: $resolved_ip"
+  exit 1
+fi
+
+echo "域名 $domain_name 成功解析到本机IP地址 ($local_ip)"
+
+
 # 生成安全范围内的随机端口
 random_http_port=$((1024 + RANDOM % (65535 - 1024)))
 random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))

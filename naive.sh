@@ -10,7 +10,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 获取用户输入的域名
-read -p "请输入您的域名: " domain_name
+read -p "请输入您的已解析域名: " domain_name
 
 # 确保用户输入的域名不为空
 if [[ -z "$domain_name" ]]; then

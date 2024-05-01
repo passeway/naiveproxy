@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# 获取用户输入的域名
+read -p "请输入您的域名 (例如 example.com): " domain_name
+
+# 确保用户输入了有效的值
+if [[ -z "$domain_name" ]]; then
+  echo "域名不能为空，请重新运行脚本并输入有效的域名。"
+  exit 1
+fi
+
+# 更新和升级系统包
+echo "Updating and upgrading system packages..."
+apt-get update && apt-get upgrade -y
+
+# 安装 Go
+echo "Installing Go..."
+apt-get install -y software-properties-common && \
+add-apt-repository -y ppa:longsleep/golang-backports && \
+apt-get update && \
+apt-get install -y golang-go
+
+# 检查 Go 版本
+go_version=$(go version)
+if [[ -z "$go_version" ]]; then
+  echo "Failed to install Go."
+  exit 1
+else
+  echo "Go installed successfully: $go_version"
+fi
+
+# 编译 Caddy
+echo "Building Caddy..."
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
+~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
+chmod +x caddy && \
+mv caddy /usr/bin/
+
+# 检查 Caddy 是否编译成功
+if [[ ! -x /usr/bin/caddy ]]; then
+  echo "Failed to build Caddy."
+  exit 1
+else
+  echo "Caddy built successfully."
+fi
+
+# 创建和配置 Caddyfile
+echo "Creating and configuring Caddyfile..."
+mkdir -p /etc/caddy && \
+touch /etc/caddy/Caddyfile && \
+cat <<EOF > /etc/caddy/Caddyfile
+{
+  http_port 8880
+}
+:8080, $domain_name:8080
+tls admin@outlook.com
+route {
+  forward_proxy {
+    basic_auth admin passeway 
+    hide_ip
+    hide_via
+    probe_resistance
+  }
+  reverse_proxy  https://www.jetbrains.com {
+    header_up  Host  {upstream_hostport}
+    header_up  X-Forwarded-Host  {host}
+  }
+}
+EOF
+
+# 格式化和验证 Caddyfile
+caddy fmt --overwrite /etc/caddy/Caddyfile && \
+caddy validate --config /etc/caddy/Caddyfile
+
+# 创建 systemd 服务
+groupadd --system caddy && \
+useradd --system \
+    --gid caddy \
+    --create-home \
+    --home-dir /var/lib/caddy \
+    --shell /usr/sbin/nologin \
+    --comment "Caddy web server" \
+    caddy
+
+touch /etc/systemd/system/caddy.service && \
+cat <<EOF > /etc/systemd/system/caddy.service
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 启动 Caddy 服务
+echo "Starting Caddy service..."
+systemctl daemon-reload && \
+systemctl enable caddy && \
+systemctl start caddy && \
+systemctl status caddy | grep "Active: active (running)"
+
+# 确保 Caddy 成功启动
+if [[ $? -ne 0 ]]; then
+  echo "Failed to start Caddy service."
+  exit 1
+else
+  echo "Caddy service started successfully."
+fi
+
+# 输出配置文件
+echo "Final configuration:"
+cat <<EOF
+{
+  "listen": "socks://127.0.0.1:1080",
+  "proxy": "https://admin:passeway@$domain_name:8080"
+}
+EOF

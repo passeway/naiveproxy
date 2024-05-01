@@ -143,9 +143,21 @@ if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /et
   exit 1
 fi
 
-# 创建systemd服务并配置Caddy服务
-groupadd --system caddy
-useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
+# 检查 'caddy' 用户组是否存在
+if getent group caddy > /dev/null; then
+  echo "'caddy' 用户组已存在，跳过创建"
+else
+  echo "创建 'caddy' 用户组"
+  groupadd --system caddy
+fi
+
+# 如果 'caddy' 用户不存在，创建它
+if getent passwd caddy > /dev/null; then
+  echo "'caddy' 用户已存在"
+else
+  echo "创建 'caddy' 用户"
+  useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
+fi
 
 if ! touch /etc/systemd/system/caddy.service; then
   echo "无法创建caddy.service"

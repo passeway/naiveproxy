@@ -186,11 +186,11 @@ if ! systemctl status caddy | grep "Active: active (running)"; then
   echo "Caddy服务未正确启动"
   exit 1
 else
-  echo "Caddy启动成功"
+  echo "Caddy已启动"
 fi
 
 # 输出Naiveproxy配置
-echo "Naiveproxy配置"
+echo "Naïve.json"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

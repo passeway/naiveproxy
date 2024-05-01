@@ -32,7 +32,6 @@ fi
 
 echo "域名成功解析到本机IP地址 ($local_ip)"
 
-
 # 生成安全范围内的随机端口
 random_http_port=$((1024 + RANDOM % (65535 - 1024)))
 random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))
@@ -176,21 +175,36 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 EOF
 
-# 启动并验证Caddy服务
-if ! systemctl daemon-reload || ! systemctl enable caddy || ! systemctl start caddy; then
+# 启动Caddy并验证
+echo "正在启动Caddy服务"
+if ! systemctl start caddy; then
   echo "Caddy服务启动失败"
   exit 1
 fi
 
-if ! systemctl status caddy | grep "Active: active (running)"; then
-  echo "Caddy服务未正确启动"
-  exit 1
+# 等待一段时间，以确保Caddy有足够时间完成证书申请
+sleep 10
+
+# 检查Caddy日志，以确定证书申请是否成功
+caddy_log=$(journalctl -u caddy | tail -n 50)
+
+if echo "$caddy_log" | grep -q "certificate obtained successfully"; then
+  echo "Caddy证书申请成功"
 else
-  echo "Caddy已启动"
+  echo "证书申请失败或仍在进行中。请检查Caddy日志获取更多信息。"
+  exit 1
+fi
+
+# 确认Caddy已正确运行
+if systemctl status caddy | grep -q "Active: active (running)"; then
+  echo "Caddy已经成功启动"
+else
+  echo "Caddy未正确启动"
+  exit 1
 fi
 
 # 输出Naiveproxy配置
-echo "Naïve.json"
+echo "NaïveProxy.json"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

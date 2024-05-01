@@ -6,7 +6,6 @@ add-apt-repository -y ppa:longsleep/golang-backports && \
 apt-get update && \
 apt-get install -y golang-go && \
 go version
-
 ```
 编译 Caddy
 ```
@@ -14,7 +13,6 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
 chmod +x caddy && \
 mv caddy /usr/bin/
-
 ```
 
 # 创建 Caddyfile 文件并写入配置
@@ -39,7 +37,6 @@ route {
    header_up  X-Forwarded-Host  {host}
   }
 }
-
 ```
 格式化Caddyfile后覆盖原配置文件
 ```
@@ -88,7 +85,13 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 [Install]
 WantedBy=multi-user.target
 ```
-
+启动 naiveproxy
+```
+systemctl daemon-reload && \
+systemctl enable caddy && \
+systemctl start caddy && \
+systemctl status caddy
+```
 加载 systemd
 ```
 systemctl daemon-reload
@@ -113,6 +116,7 @@ systemctl reload caddy
 ```
 systemctl stop caddy
 ```
+
 # JSON 格式的代理配置
 ```
 {

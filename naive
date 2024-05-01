@@ -10,7 +10,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 获取用户输入的域名
-read -p "请输入您的已解析域名: " domain_name
+read -p "请输入您的域名: " domain_name
 
 # 确保用户输入的域名不为空
 if [[ -z "$domain_name" ]]; then
@@ -29,7 +29,7 @@ echo "选择的代理端口: $random_proxy_port"
 admin_user=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
 admin_pass=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
 
-echo "随机生成的用户名: $admin_user"
+echo "随机生成的用户: $admin_user"
 echo "随机生成的密码: $admin_pass"
 
 # 更新和升级系统包
@@ -77,11 +77,24 @@ if ! ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=git
   exit 1
 fi
 
-if ! chmod +x caddy && mv caddy /usr/bin/; then
-  echo "无法设置执行权限或移动Caddy到/usr/bin/。"
+# 检查Caddy是否成功编译
+if [[ ! -f /root/caddy ]]; then
+  echo "Caddy编译失败，/root/caddy文件不存在。"
+  exit 1
+fi
+
+# 移动Caddy到/usr/bin/并确保具有执行权限
+echo "移动Caddy到/usr/bin/..."
+if ! mv /root/caddy /usr/bin/; then
+  echo "无法将Caddy移动到/usr/bin/。"
+  exit 1
+fi
+
+if ! chmod +x /usr/bin/caddy; then
+  echo "无法为Caddy设置执行权限。"
   exit 1
 else
-  echo "Caddy编译成功。"
+  echo "Caddy已成功移动到/usr/bin/并设置执行权限。"
 fi
 
 # 创建并配置Caddyfile
@@ -99,7 +112,7 @@ cat <<EOF > /etc/caddy/Caddyfile
 tls admin@outlook.com
 route {
   forward_proxy {
-    basic_auth $admin_user $admin_pass
+    basic_auth $admin_user $admin_pass 
     hide_ip
     hide_via
     probe_resistance
@@ -117,7 +130,7 @@ if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /et
   exit 1
 fi
 
-# 为Caddy创建并配置systemd服务
+# 创建systemd服务并配置Caddy服务
 echo "正在为Caddy创建systemd服务..."
 groupadd --system caddy
 useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy

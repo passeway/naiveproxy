@@ -145,19 +145,19 @@ fi
 
 # 检查 'caddy' 用户组是否存在
 if getent group caddy > /dev/null; then
-  echo "'caddy' 用户组已存在，跳过创建"
+
 else
-  echo "创建 'caddy' 用户组"
+
   groupadd --system caddy
 fi
 
 # 如果 'caddy' 用户不存在，创建它
 if getent passwd caddy > /dev/null; then
-  echo "'caddy' 用户已存在"
+
 else
-  echo "创建 'caddy' 用户"
   useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
 fi
+
 
 if ! touch /etc/systemd/system/caddy.service; then
   echo "无法创建caddy.service"

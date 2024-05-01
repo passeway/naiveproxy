@@ -4,7 +4,7 @@
 set -e
 
 # 获取用户输入的域名
-read -p "请输入您的域名 (例如 example.com): " domain_name
+read -p "请输入您的已解析域名 : " domain_name
 
 # 确保用户输入了有效的值
 if [[ -z "$domain_name" ]]; then
@@ -125,7 +125,7 @@ else
 fi
 
 # 输出配置文件
-echo "Final configuration:"
+echo "naiveproxy配置文件"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

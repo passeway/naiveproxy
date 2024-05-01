@@ -1,65 +1,105 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status
+# 如果命令返回非零状态，立即退出
 set -e
 
-# 获取用户输入的域名
-read -p "请输入您的已解析域名 : " domain_name
-
-# 确保用户输入了有效的值
-if [[ -z "$domain_name" ]]; then
-  echo "域名不能为空，请重新运行脚本并输入有效的域名。"
+# 确保脚本以管理员权限运行
+if [[ $EUID -ne 0 ]]; then
+  echo "此脚本必须以root权限运行。请使用sudo或以root身份运行。"
   exit 1
 fi
+
+# 获取用户输入的域名
+read -p "请输入您的已解析域名: " domain_name
+
+# 确保用户输入的域名不为空
+if [[ -z "$domain_name" ]]; then
+  echo "域名不能为空。请重新运行脚本并输入有效的域名。"
+  exit 1
+fi
+
+# 生成安全范围内的随机端口
+random_http_port=$((1024 + RANDOM % (65535 - 1024)))
+random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))
+
+echo "选择的HTTP端口: $random_http_port"
+echo "选择的代理端口: $random_proxy_port"
+
+# 生成随机用户名和密码
+admin_user=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
+admin_pass=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
+
+echo "随机生成的用户名: $admin_user"
+echo "随机生成的密码: $admin_pass"
 
 # 更新和升级系统包
-echo "Updating and upgrading system packages..."
-apt-get update && apt-get upgrade -y
+echo "正在更新和升级系统包..."
+if ! apt-get update && apt-get upgrade -y; then
+  echo "系统包更新失败。请检查网络连接或包管理器。"
+  exit 1
+fi
 
-# 安装 Go
-echo "Installing Go..."
-apt-get install -y software-properties-common && \
-add-apt-repository -y ppa:longsleep/golang-backports && \
-apt-get update && \
-apt-get install -y golang-go
+# 安装Go语言
+echo "正在安装Go..."
+if ! apt-get install -y software-properties-common; then
+  echo "无法安装software-properties-common。请检查包管理器。"
+  exit 1
+fi
 
-# 检查 Go 版本
+if ! add-apt-repository -y ppa:longsleep/golang-backports && apt-get update; then
+  echo "无法添加Go的PPA。请检查网络连接。"
+  exit 1
+fi
+
+if ! apt-get install -y golang-go; then
+  echo "无法安装Go。请检查包管理器。"
+  exit 1
+fi
+
+# 检查Go版本
 go_version=$(go version)
 if [[ -z "$go_version" ]]; then
-  echo "Failed to install Go."
+  echo "Go安装失败。"
   exit 1
 else
-  echo "Go installed successfully: $go_version"
+  echo "Go安装成功: $go_version"
 fi
 
-# 编译 Caddy
-echo "Building Caddy..."
-go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
-~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
-chmod +x caddy && \
-mv caddy /usr/bin/
+# 编译带有forwardproxy的Caddy服务器
+echo "正在编译Caddy..."
+if ! go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; then
+  echo "无法安装xcaddy。"
+  exit 1
+fi
 
-# 检查 Caddy 是否编译成功
-if [[ ! -x /usr/bin/caddy ]]; then
-  echo "Failed to build Caddy."
+if ! ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive; then
+  echo "无法编译带有forwardproxy的Caddy。"
+  exit 1
+fi
+
+if ! chmod +x caddy && mv caddy /usr/bin/; then
+  echo "无法设置执行权限或移动Caddy到/usr/bin/。"
   exit 1
 else
-  echo "Caddy built successfully."
+  echo "Caddy编译成功。"
 fi
 
-# 创建和配置 Caddyfile
-echo "Creating and configuring Caddyfile..."
-mkdir -p /etc/caddy && \
-touch /etc/caddy/Caddyfile && \
+# 创建并配置Caddyfile
+echo "正在创建和配置Caddyfile..."
+if ! mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile; then
+  echo "无法创建Caddyfile。"
+  exit 1
+fi
+
 cat <<EOF > /etc/caddy/Caddyfile
 {
-  http_port 8880
+  http_port $random_http_port
 }
-:8080, $domain_name:8080
+:$random_proxy_port, $domain_name:$random_proxy_port
 tls admin@outlook.com
 route {
   forward_proxy {
-    basic_auth admin passeway 
+    basic_auth $admin_user $admin_pass
     hide_ip
     hide_via
     probe_resistance
@@ -71,21 +111,22 @@ route {
 }
 EOF
 
-# 格式化和验证 Caddyfile
-caddy fmt --overwrite /etc/caddy/Caddyfile && \
-caddy validate --config /etc/caddy/Caddyfile
+# 格式化并验证Caddyfile
+if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /etc/caddy/Caddyfile; then
+  echo "Caddyfile格式或验证失败。"
+  exit 1
+fi
 
-# 创建 systemd 服务
-groupadd --system caddy && \
-useradd --system \
-    --gid caddy \
-    --create-home \
-    --home-dir /var/lib/caddy \
-    --shell /usr/sbin/nologin \
-    --comment "Caddy web server" \
-    caddy
+# 为Caddy创建并配置systemd服务
+echo "正在为Caddy创建systemd服务..."
+groupadd --system caddy
+useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
 
-touch /etc/systemd/system/caddy.service && \
+if ! touch /etc/systemd/system/caddy.service; then
+  echo "无法创建caddy.service。"
+  exit 1
+fi
+
 cat <<EOF > /etc/systemd/system/caddy.service
 [Unit]
 Description=Caddy
@@ -109,26 +150,25 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 EOF
 
-# 启动 Caddy 服务
-echo "Starting Caddy service..."
-systemctl daemon-reload && \
-systemctl enable caddy && \
-systemctl start caddy && \
-systemctl status caddy | grep "Active: active (running)"
-
-# 确保 Caddy 成功启动
-if [[ $? -ne 0 ]]; then
-  echo "Failed to start Caddy service."
+# 启动并验证Caddy服务
+echo "正在启动Caddy服务..."
+if ! systemctl daemon-reload || ! systemctl enable caddy || ! systemctl start caddy; then
+  echo "Caddy服务启动失败。"
   exit 1
-else
-  echo "Caddy service started successfully."
 fi
 
-# 输出配置文件
-echo "naiveproxy配置文件"
+if ! systemctl status caddy | grep "Active: active (running)"; then
+  echo "Caddy服务未正确启动。"
+  exit 1
+else
+  echo "Caddy服务启动成功。"
+fi
+
+# 输出Naiveproxy配置
+echo "Naiveproxy配置:"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://admin:passeway@$domain_name:8080"
+  "proxy": "https://$admin_user:$admin_pass@$domain_name:$random_proxy_port"
 }
 EOF

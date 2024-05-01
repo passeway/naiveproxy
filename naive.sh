@@ -183,15 +183,19 @@ if ! systemctl start caddy; then
 fi
 
 # 等待一段时间，以确保Caddy有足够时间完成证书申请
-sleep 10
+sleep 20
 
-# 检查Caddy日志，以确定证书申请是否成功
-caddy_log=$(journalctl -u caddy | tail -n 50)
-
-if echo "$caddy_log" | grep -q "certificate obtained successfully"; then
-  echo "Caddy证书申请成功"
+# 检查证书目录以确保证书已申请成功
+cert_dir="/var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$domain_name"
+if [[ -d "$cert_dir" ]]; then
+  if ls "$cert_dir"/* > /dev/null 2>&1; then
+    echo "证书申请成功。证书文件位于 $cert_dir"
+  else
+    echo "证书申请失败或仍在进行中。请检查 Caddy 日志获取更多信息。"
+    exit 1
+  fi
 else
-  echo "证书申请失败或仍在进行中。请检查Caddy日志获取更多信息。"
+  echo "未找到与域名相关的证书目录：$cert_dir。请检查配置。"
   exit 1
 fi
 

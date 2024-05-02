@@ -18,6 +18,20 @@ if [[ -z "$domain_name" ]]; then
   exit 1
 fi
 
+# 获取本机IP地址
+local_ip=$(hostname -I | awk '{print $1}')
+
+# 使用dig查询域名的A记录
+resolved_ip=$(dig +short $domain_name | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
+
+# 检查域名是否解析到本机IP地址
+if [[ "$resolved_ip" != "$local_ip" ]]; then
+  echo "域名未解析到本机IP地址 ($local_ip)。解析结果是: $resolved_ip"
+  exit 1
+fi
+
+echo "域名成功解析到本机IP地址 ($local_ip)"
+
 # 生成安全范围内的随机端口
 random_http_port=$((1024 + RANDOM % (65535 - 1024)))
 random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))
@@ -108,7 +122,7 @@ cat <<EOF > /etc/caddy/Caddyfile
   http_port $random_http_port
 }
 :$random_proxy_port, $domain_name:$random_proxy_port
-tls admin@outlook.com
+tls admin@yourdomain.com
 route {
   forward_proxy {
     basic_auth $admin_user $admin_pass 
@@ -129,10 +143,16 @@ if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /et
   exit 1
 fi
 
-# 创建systemd服务并配置Caddy服务
-groupadd --system caddy
-useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
+# 确保存在 Caddy 用户组和用户
+if ! getent group caddy > /dev/null; then
+  groupadd --system caddy
+fi
 
+if ! id "caddy" > /dev/null 2>&1; then
+  useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
+fi
+
+# 创建 systemd 服务并配置 Caddy 服务
 if ! touch /etc/systemd/system/caddy.service; then
   echo "无法创建caddy.service"
   exit 1
@@ -161,21 +181,28 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 EOF
 
-# 启动并验证Caddy服务
-if ! systemctl daemon-reload || ! systemctl enable caddy || ! systemctl start caddy; then
-  echo "Caddy服务启动失败"
+# 重载 systemd 守护进程并启动 Caddy 服务
+systemctl daemon-reload
+echo "正在启动 Caddy 服务"
+if ! systemctl start caddy; then
+  echo "Caddy 服务启动失败"
   exit 1
 fi
 
-if ! systemctl status caddy | grep "Active: active (running)"; then
-  echo "Caddy服务未正确启动"
-  exit 1
+# 确认 Caddy 服务状态
+if systemctl status caddy | grep -q "Active: active (running)"; then
+  echo "Caddy 已经成功启动"
 else
-  echo "Caddy已启动成功"
+  echo "Caddy 未正确启动"
+  exit 1
 fi
 
-# 输出Naiveproxy配置
-echo "Naiveproxy.json"
+# 检查 Caddy 日志，以确保没有错误或警告
+echo "验证 Caddy 服务状态和日志"
+journalctl -u caddy --no-pager
+
+# 输出 NaïveProxy 配置
+echo "NaïveProxy.json"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

@@ -117,6 +117,11 @@ systemctl reload caddy
 systemctl stop caddy
 ```
 
+Caddy 日志
+```
+journalctl -u caddy --no-pager
+```
+
 # JSON 格式的代理配置
 ```
 {

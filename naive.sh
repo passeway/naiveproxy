@@ -184,7 +184,7 @@ else
 fi
 
 # 检查 Caddy 日志，以确保没有错误或警告
-echo "验证 Caddy 服务状态和日志"
+echo "Caddy服务状态日志"
 journalctl -u caddy --no-pager
 
 # 输出 NaïveProxy 配置

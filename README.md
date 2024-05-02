@@ -129,6 +129,10 @@ Caddy 日志
 ```
 journalctl -u caddy --no-pager
 ```
+查看证书
+```
+ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+```
 
 # JSON 格式的代理配置
 ```
@@ -137,9 +141,6 @@ journalctl -u caddy --no-pager
   "proxy": "https://admin:passeway@example.com:8080"
 }
 ```
-查看证书
-```
-ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
-```
+
 项目地址
 https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon

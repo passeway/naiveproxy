@@ -124,5 +124,9 @@ systemctl stop caddy
   "proxy": "https://admin:passeway@example.com:8080"
 }
 ```
+查看证书
+```
+ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+```
 项目地址
 https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon

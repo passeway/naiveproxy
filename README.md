@@ -1,3 +1,8 @@
+# 一键脚本
+```
+bash <(curl -Ls https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh)
+```
+
 # 使用 Go 编译 Caddy
 安装 Go
 ```

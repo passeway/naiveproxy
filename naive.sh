@@ -177,7 +177,7 @@ fi
 
 # 确认 Caddy 服务状态
 if systemctl status caddy | grep -q "Active: active (running)"; then
-  echo "Caddy已成功启动"
+  echo "Caddy已成功启动,配置文件NaïveProxy.json"
 else
   echo "Caddy 未正确启动"
   exit 1
@@ -185,7 +185,6 @@ fi
 
 
 # 输出 NaïveProxy 配置
-echo "NaïveProxy.json"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",

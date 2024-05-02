@@ -8,16 +8,6 @@ if [[ $EUID -ne 0 ]]; then
   echo "此脚本必须以 root 权限运行。请使用 sudo 或以 root 身份运行。"
   exit 1
 fi
-# 调用等待其他 apt 进程完成函数
-wait_for_apt
-
-# 判断系统及定义系统安装依赖方式
-REGEX=("debian" "ubuntu" "centos|red hat|kernel|oracle linux|alma|rocky" "'amazon linux'" "fedora")
-RELEASE=("Debian" "Ubuntu" "CentOS" "CentOS" "Fedora")
-PACKAGE_UPDATE=("apt-get update" "apt-get update" "yum -y update" "yum -y update" "yum -y update")
-PACKAGE_INSTALL=("apt -y install" "apt -y install" "yum -y install" "yum -y install" "yum -y install")
-PACKAGE_REMOVE=("apt -y remove" "apt -y remove" "yum -y remove" "yum -y remove" "yum -y remove")
-PACKAGE_UNINSTALL=("apt -y autoremove" "apt -y autoremove" "yum -y autoremove" "yum -y autoremove" "yum -y autoremove")
 
 # 获取用户输入的域名
 read -p "请输入您的已解析域名: " domain_name

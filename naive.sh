@@ -174,12 +174,12 @@ EOF
 
     # 确认 Caddy 服务状态
     if systemctl status caddy | grep -q "Active: active (running)"; then
-      echo "Caddy已成功启动。"
+      echo "Caddy已成功启动NaïveProxy安装完成"
     else
       echo "Caddy未正确启动"
       exit 1
     fi
-    echo "NaïveProxy安装完成"
+
     # 输出NaïveProxy配置
     cat <<EOF
 {

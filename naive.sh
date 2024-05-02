@@ -151,14 +151,14 @@ else
   groupadd --system caddy
 fi
 
-# 如果 'caddy' 用户不存在，创建它
+# 如果caddy用户不存在，创建它
 if getent passwd caddy > /dev/null; then
 
 else
   useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
 fi
 
-
+# 创建caddy.service
 if ! touch /etc/systemd/system/caddy.service; then
   echo "无法创建caddy.service"
   exit 1
@@ -188,20 +188,19 @@ WantedBy=multi-user.target
 EOF
 
 # 启动Caddy并验证
-echo "正在启动Caddy服务"
 if ! systemctl start caddy; then
   echo "Caddy服务启动失败"
   exit 1
 fi
 
 # 等待一段时间，以确保Caddy有足够时间完成证书申请
-sleep 20
+sleep 10
 
 # 检查证书目录以确保证书已申请成功
 cert_dir="/var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$domain_name"
 if [[ -d "$cert_dir" ]]; then
   if ls "$cert_dir"/* > /dev/null 2>&1; then
-    echo "证书申请成功。证书文件位于 $cert_dir"
+    echo "Caddy证书申请成功，证书文件位于 $cert_dir"
   else
     echo "证书申请失败或仍在进行中。请检查 Caddy 日志获取更多信息。"
     exit 1
@@ -220,10 +219,11 @@ else
 fi
 
 # 输出Naiveproxy配置
-echo "NaïveProxy.json"
+echo "NaïveProxy.json配置"
 cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",
   "proxy": "https://$admin_user:$admin_pass@$domain_name:$random_proxy_port"
 }
 EOF
+

@@ -169,7 +169,7 @@ EOF
 
 # 重载 systemd 守护进程并启动 Caddy 服务
 systemctl daemon-reload
-echo "正在启动 Caddy 服务"
+echo "正在启动Caddy服务"
 if ! systemctl start caddy; then
   echo "Caddy 服务启动失败"
   exit 1
@@ -177,7 +177,7 @@ fi
 
 # 确认 Caddy 服务状态
 if systemctl status caddy | grep -q "Active: active (running)"; then
-  echo "Caddy 已经成功启动"
+  echo "Caddy已经成功启动"
 else
   echo "Caddy 未正确启动"
   exit 1

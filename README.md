@@ -1,4 +1,4 @@
-# 一键脚本
+# NaïveProxy一键脚本
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh)
 ```

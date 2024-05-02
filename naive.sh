@@ -33,14 +33,14 @@ echo "随机生成的用户: $admin_user"
 echo "随机生成的密码: $admin_pass"
 
 # 更新和升级系统包
-echo "正在更新和升级系统包..."
+echo "正在更新系统包"
 if ! apt-get update && apt-get upgrade -y; then
   echo "系统包更新失败。请检查网络连接或包管理器。"
   exit 1
 fi
 
 # 安装Go语言
-echo "正在安装Go..."
+echo "正在安装Go"
 if ! apt-get install -y software-properties-common; then
   echo "无法安装software-properties-common。请检查包管理器。"
   exit 1
@@ -66,7 +66,7 @@ else
 fi
 
 # 编译带有forwardproxy的Caddy服务器
-echo "正在编译Caddy..."
+echo "正在编译Caddy"
 if ! go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; then
   echo "无法安装xcaddy。"
   exit 1

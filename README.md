@@ -1,3 +1,6 @@
+## 预览
+
+![preview](预览.png)
 # NaïveProxy一键脚本
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh)

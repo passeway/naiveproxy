@@ -173,9 +173,6 @@ if ! systemctl status caddy | grep "Active: active (running)"; then
 else
   echo "Caddy启动成功"
 fi
-# 查看证书是否申请成功
-ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/$domain_name
-
 
 # 输出Naiveproxy配置
 echo "Naiveproxy.json"

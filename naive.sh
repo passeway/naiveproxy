@@ -183,9 +183,6 @@ else
   exit 1
 fi
 
-# 检查 Caddy 日志，以确保没有错误或警告
-echo "Caddy服务状态日志"
-journalctl -u caddy --no-pager
 
 # 输出 NaïveProxy 配置
 echo "NaïveProxy.json"

@@ -5,11 +5,19 @@ set -e
 
 # 确保脚本以管理员权限运行
 if [[ $EUID -ne 0 ]]; then
-  echo "此脚本必须以root权限运行。请使用sudo或以root身份运行。"
+  echo "此脚本必须以 root 权限运行。请使用 sudo 或以 root 身份运行。"
   exit 1
 fi
-# 检查并安装dig必备工具
-apt-get update && apt-get install -y dnsutils || { echo "无法安装 dnsutils。请检查网络连接。"; exit 1; }
+# 调用等待其他 apt 进程完成函数
+wait_for_apt
+
+# 判断系统及定义系统安装依赖方式
+REGEX=("debian" "ubuntu" "centos|red hat|kernel|oracle linux|alma|rocky" "'amazon linux'" "fedora")
+RELEASE=("Debian" "Ubuntu" "CentOS" "CentOS" "Fedora")
+PACKAGE_UPDATE=("apt-get update" "apt-get update" "yum -y update" "yum -y update" "yum -y update")
+PACKAGE_INSTALL=("apt -y install" "apt -y install" "yum -y install" "yum -y install" "yum -y install")
+PACKAGE_REMOVE=("apt -y remove" "apt -y remove" "yum -y remove" "yum -y remove" "yum -y remove")
+PACKAGE_UNINSTALL=("apt -y autoremove" "apt -y autoremove" "yum -y autoremove" "yum -y autoremove" "yum -y autoremove")
 
 # 获取用户输入的域名
 read -p "请输入您的已解析域名: " domain_name
@@ -19,20 +27,29 @@ if [[ -z "$domain_name" ]]; then
   echo "域名不能为空。请重新运行脚本并输入有效的域名。"
   exit 1
 fi
+# 确保 dnsutils 安装
+apt-get update && apt-get install -y dnsutils || { echo "无法安装 dnsutils。"; exit 1; }
 
 # 获取本机IP地址
 local_ip=$(hostname -I | awk '{print $1}')
 
-# 使用dig查询域名的A记录
-resolved_ip=$(dig +short $domain_name | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
+# 使用 dig 查询域名的 A 记录
+resolved_ip=$(dig +short "$domain_name" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
 
 # 检查域名是否解析到本机IP地址
+if [[ -z "$resolved_ip" ]]; then
+  echo "无法解析域名 $domain_name"
+  exit 1
+fi
+
 if [[ "$resolved_ip" != "$local_ip" ]]; then
   echo "域名未解析到本机IP地址 ($local_ip)。解析结果是: $resolved_ip"
   exit 1
 fi
 
 echo "域名成功解析到本机IP地址 ($local_ip)"
+
+
 
 # 生成安全范围内的随机端口
 random_http_port=$((1024 + RANDOM % (65535 - 1024)))

@@ -196,11 +196,12 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 EOF
 
-# 启动Caddy并验证
-if ! systemctl start caddy; then
-  echo "Caddy服务启动失败"
+if systemctl status caddy | grep -q "Active: active (running)"; then
+  echo "Caddy已经成功启动"
+else
+  echo "Caddy未正确启动"
   exit 1
-fi
+
 
 # 等待一段时间，以确保Caddy有足够时间完成证书申请
 sleep 10

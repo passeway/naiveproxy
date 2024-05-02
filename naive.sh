@@ -8,6 +8,8 @@ if [[ $EUID -ne 0 ]]; then
   echo "此脚本必须以root权限运行。请使用sudo或以root身份运行。"
   exit 1
 fi
+# 检查并安装dig必备工具
+apt-get update && apt-get install -y dnsutils || { echo "无法安装 dnsutils。请检查网络连接。"; exit 1; }
 
 # 获取用户输入的域名
 read -p "请输入您的已解析域名: " domain_name

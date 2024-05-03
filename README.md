@@ -40,7 +40,7 @@ route {
    hide_via
    probe_resistance
   }
- reverse_proxy  https://www.jetbrains.com  {
+ reverse_proxy  https://www.bing.com  {
    header_up  Host  {upstream_hostport}
    header_up  X-Forwarded-Host  {host}
   }

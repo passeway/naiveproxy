@@ -206,16 +206,11 @@ EOF
 
     # 删除 Caddy 的配置文件
     rm -rf /etc/caddy
-    rm -rf /var/lib/caddy
 
     # 删除 systemd 服务配置
     rm /etc/systemd/system/caddy.service
     systemctl daemon-reload
 
-    # 删除 Go 语言
-    apt-get remove --purge golang-go -y
-    apt-get autoremove -y
-    apt-get autoclean -y
 
     # 删除 Caddy 编译工具 xcaddy
     rm ~/go/bin/xcaddy

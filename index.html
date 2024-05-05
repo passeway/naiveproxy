@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>网盘登录页面</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #3498db, #9b59b6);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-box:hover {
+            transform: scale(1.05);
+        }
+
+        .login-box h2 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.7);
+            color: #333;
+        }
+
+        .login-box button {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            background: #e67e22;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .login-box button:hover {
+            background: #d35400;
+        }
+
+        .error {
+            color: red;
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <i class="fa fa-cloud"></i> 我的网盘
+    </div>
+
+    <div class="login-box">
+        <h2>登录</h2>
+        <input type="text" id="username" placeholder="用户名">
+        <input type="password" id="password" placeholder="密码">
+        <button id="login-button">登录</button>
+        <div class="error">用户名或密码错误</div>
+    </div>
+
+    <script>
+        const loginButton = document.getElementById('login-button');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const errorBox = document.querySelector('.error');
+
+        loginButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (username === 'admin' &&密码是“password123”) {
+                alert("登录成功！");
+            } else {
+                errorBox.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

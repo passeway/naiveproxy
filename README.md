@@ -32,7 +32,7 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 http_port 8880
 }
 :8080, example.com:8080
-tls admin@outlook.com
+tls admin@gmail.com
 route {
  forward_proxy {
    basic_auth admin passeway 

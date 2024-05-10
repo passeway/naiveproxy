@@ -106,7 +106,7 @@ case $choice in
   http_port $random_http_port
 }
 :$random_proxy_port, $domain_name:$random_proxy_port
-tls admin@yourdomain.com
+tls admin@gmail.com
 route {
   forward_proxy {
     basic_auth $admin_user $admin_pass 

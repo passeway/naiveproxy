@@ -6,6 +6,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
         body {
             margin: 0;
             padding: 0;
@@ -15,62 +17,122 @@
             justify-content: center;
             align-items: center;
             color: white;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Poppins', sans-serif;
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+        }
+
+        @keyframes gradientAnimation {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         .header {
             position: absolute;
             top: 10px;
             left: 20px;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 28px;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .header i {
+            margin-right: 10px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
         .login-box {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.2);
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 20px;
             text-align: center;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease;
-            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            max-width: 400px;
+            width: 100%;
         }
 
         .login-box:hover {
-            transform: scale(1.10);
+            transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
 
         .login-box input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
-            margin-bottom: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
             font-size: 14px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.8);
             color: #333;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
         }
 
         .login-box button {
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
-            background: #e67e22;
+            font-weight: 600;
+            background: linear-gradient(to right, #e67e22, #d35400);
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
             width: 100%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-box button:before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+        }
+
+        .login-box button:hover:before {
+            width: 200%;
+            height: 200%;
+            opacity: 1;
         }
 
         .login-box button:hover {
-            background: #d35400;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
         .error {
-            color: red;
+            color: #fff;
+            background-color: rgba(255, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
             display: none;
-            margin-top: 10px;
+            margin-top: 20px;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
         }
     </style>
 </head>
@@ -104,7 +166,7 @@
                 return;
             }
 
-            if (username === 'admin@123' && password === 'password123') {
+            if (username === 'admin@123' && password === 'passeway@123') {
                 alert("Login successful!");
             } else {
                 errorBox.textContent = "Incorrect username or password.";

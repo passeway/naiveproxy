@@ -1,13 +1,13 @@
-## 预览
+## 终端预览
 
 ![preview](预览.png)
-# NaïveProxy一键脚本
+## 一键脚本
 ```
 bash <(curl -Ls https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh)
 ```
 
-# 使用 Go 编译 Caddy
-安装 Go
+## 安装 NaïveProxy
+安装 Go 语言
 ```
 apt-get install -y software-properties-common && \
 add-apt-repository -y ppa:longsleep/golang-backports && \
@@ -15,7 +15,7 @@ apt-get update && \
 apt-get install -y golang-go && \
 go version
 ```
-编译 Caddy
+编译 Caddy 文件
 ```
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive && \
@@ -23,7 +23,15 @@ chmod +x caddy && \
 mv caddy /usr/bin/
 ```
 
-# 创建 Caddyfile 文件并写入配置
+创建 /var/www/html 目录
+```
+mkdir -p /var/www/html
+```
+下载文件到 /var/www/html
+```
+wget -O /var/www/html/index.html https://gitlab.com/passeway/naiveproxy/raw/main/index.html
+```
+创建 Caddyfile 配置文件
 ```
 mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
@@ -40,22 +48,20 @@ route {
    hide_via
    probe_resistance
   }
- reverse_proxy  https://www.bing.com  {
-   header_up  Host  {upstream_hostport}
-   header_up  X-Forwarded-Host  {host}
+  file_server {
+    root /var/www/html
   }
 }
 ```
-格式化Caddyfile后覆盖原配置文件
+格式化 Caddyfile 覆盖原配置文件
 ```
 caddy fmt --overwrite /etc/caddy/Caddyfile
 ```
-校验Caddyfile配置文件是否正确
+校验 Caddyfile 配置是否正确
 ```
 caddy validate --config /etc/caddy/Caddyfile
 ```
-# 使用 systemd 启动 caddy 服务
-创建caddy唯一的Linux 组和用户
+创建 caddy 的Linux 组和用户
 ```
 groupadd --system caddy
 
@@ -67,7 +73,7 @@ useradd --system \
     --comment "Caddy web server" \
     caddy
 ```
-创建Caddy服务的Systemd配置文件
+创建 Caddy 服务的 Systemd 配置
 ```
 touch /etc/systemd/system/caddy.service && nano /etc/systemd/system/caddy.service
 ```
@@ -93,48 +99,85 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 [Install]
 WantedBy=multi-user.target
 ```
-启动 naiveproxy
+启动 naiveproxy 服务
 ```
 systemctl daemon-reload && \
 systemctl enable caddy && \
 systemctl start caddy && \
 systemctl status caddy
 ```
-加载 systemd
+加载 systemd 服务
 ```
 systemctl daemon-reload
 ```
-自启 Caddy 
+自启 Caddy 服务
 ```
 systemctl enable caddy
 ```
-启动 Caddy 
+启动 Caddy 服务
 ```
 systemctl start caddy
 ```
-检查 Caddy 
+检查 Caddy 状态
 ```
 systemctl status caddy
 ```
-重启 caddy 
+重启 caddy 服务
 ```
 systemctl reload caddy
 ```
-停止 Caddy 
+停止 Caddy 服务
 ```
 systemctl stop caddy
 ```
-
-Caddy 日志
+运行 Caddy 服务
+```
+/usr/bin/caddy run --config /etc/caddy/Caddyfile
+```
+查看 Caddy 日志
 ```
 journalctl -u caddy --no-pager
 ```
-查看证书
+查看 Caddy 证书
 ```
-ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+ls -a /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+```
+## 卸载 NaïveProxy
+```
+systemctl stop caddy && \
+systemctl disable caddy && \
+rm /usr/bin/caddy && \
+rm -rf /etc/caddy && \
+rm -rf /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/* && \
+rm /etc/systemd/system/caddy.service && \
+systemctl daemon-reload && \
+rm ~/go/bin/xcaddy
+```
+停止 Caddy 服务
+```
+systemctl stop caddy
+```
+禁用 Caddy 服务
+```
+systemctl disable caddy
+```
+删除 Caddy 文件
+```
+rm /usr/bin/caddy
+rm -rf /etc/caddy
+rm -rf /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/*
+```
+删除 systemd 服务
+```
+rm /etc/systemd/system/caddy.service
+systemctl daemon-reload
+```
+删除 xcaddy 文件
+```
+rm ~/go/bin/xcaddy
 ```
 
-# JSON 格式的代理配置
+## NaïveProxy.json 格式的代理配置
 ```
 {
   "listen": "socks://127.0.0.1:1080",
@@ -142,5 +185,4 @@ ls /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-d
 }
 ```
 
-项目地址
-https://github.com/klzgrad/naiveproxy/wiki/Run-Caddy-as-a-daemon
+## 项目地址：https://github.com/klzgrad/naiveproxy

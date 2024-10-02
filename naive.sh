@@ -18,6 +18,15 @@ check_naiveproxy_status() {
   fi
 }
 
+# 检查 NaïveProxy 运行状态
+check_naiveproxy_running() {
+  if systemctl status caddy | grep -q "Active: active (running)"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 # 安装 NaïveProxy
 install_naiveproxy() {
   echo "正在安装 NaïveProxy"
@@ -183,8 +192,8 @@ EOF
   fi
 
   # 确认 Caddy 服务状态
-  if systemctl status caddy | grep -q "Active: active (running)"; then
-    echo "NaïveProxy 安装成功"
+  if check_naiveproxy_running; then
+    echo "NaïveProxy 安装成功并正在运行"
   else
     echo "Caddy 未正确启动"
     return 1
@@ -207,6 +216,26 @@ EOF
 EOF
 }
 
+# 启动 NaïveProxy
+start_naiveproxy() {
+  echo "正在启动 NaïveProxy"
+  if systemctl start caddy; then
+    echo "NaïveProxy 启动成功"
+  else
+    echo "NaïveProxy 启动失败"
+  fi
+}
+
+# 停止 NaïveProxy
+stop_naiveproxy() {
+  echo "正在停止 NaïveProxy"
+  if systemctl stop caddy; then
+    echo "NaïveProxy 停止成功"
+  else
+    echo "NaïveProxy 停止失败"
+  fi
+}
+
 # 卸载 NaïveProxy
 uninstall_naiveproxy() {
   echo "正在卸载 NaïveProxy"
@@ -222,6 +251,7 @@ uninstall_naiveproxy() {
 
   # 删除 Caddy 的配置文件
   rm -rf /etc/caddy
+  rm -rf /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/*
 
   # 删除 systemd 服务配置
   rm /etc/systemd/system/caddy.service
@@ -238,10 +268,17 @@ show_menu() {
   clear
   check_naiveproxy_status
   naiveproxy_status=$?
+  check_naiveproxy_running
+  naiveproxy_running=$?
+
   echo -e "${GREEN}=== NaïveProxy 管理工具 ===${RESET}"
   echo -e "${GREEN}当前状态: $(if [ ${naiveproxy_status} -eq 0 ]; then echo "${GREEN}已安装${RESET}"; else echo "${RED}未安装${RESET}"; fi)${RESET}"
+  echo -e "${GREEN}运行状态: $(if [ ${naiveproxy_running} -eq 0 ]; then echo "${GREEN}已运行${RESET}"; else echo "${RED}未运行${RESET}"; fi)${RESET}"
+  echo ""
   echo "1. 安装 NaïveProxy"
-  echo "2. 卸载 NaïveProxy"
+  echo "2. 启动 NaïveProxy"
+  echo "3. 停止 NaïveProxy"
+  echo "4. 卸载 NaïveProxy"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"
   read -p "请输入选项编号: " choice
@@ -259,6 +296,12 @@ while true; do
       install_naiveproxy
       ;;
     2)
+      start_naiveproxy
+      ;;
+    3)
+      stop_naiveproxy
+      ;;
+    4)
       uninstall_naiveproxy
       ;;
     0)

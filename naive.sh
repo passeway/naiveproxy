@@ -186,6 +186,7 @@ EOF
 
   # 重载 systemd 守护进程并启动 Caddy 服务
   systemctl daemon-reload
+  systemctl enable caddy
   if ! systemctl start caddy; then
     echo "Caddy 服务启动失败"
     return 1

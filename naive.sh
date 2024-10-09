@@ -126,7 +126,7 @@ install_naiveproxy() {
   http_port ${random_http_port}
 }
 :${random_proxy_port}, ${domain_name}:${random_proxy_port}
-tls admin@gmail.com
+tls me@gmail.com
 route {
   forward_proxy {
     basic_auth ${admin_user} ${admin_pass}

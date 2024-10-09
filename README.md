@@ -37,20 +37,21 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
 {
-http_port 8880
+	http_port 8880
 }
-:8080, example.com:8080
-tls admin@gmail.com
-route {
- forward_proxy {
-   basic_auth admin passeway 
-   hide_ip
-   hide_via
-   probe_resistance
-  }
-  file_server {
-    root /var/www/html
-  }
+:8080, example.com:8080 {
+	tls me@gmail.com
+	route {
+		forward_proxy {
+			basic_auth admin passeway
+			hide_ip
+			hide_via
+			probe_resistance
+		}
+		file_server {
+			root /var/www/html
+		}
+	}
 }
 ```
 格式化 Caddyfile 覆盖原配置文件

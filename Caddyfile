@@ -1,0 +1,30 @@
+{
+	order forward_proxy before file_server
+	http_port 8880
+}
+
+:8080, example.com:8080 {
+	tls me@gmail.com
+
+	route {
+		forward_proxy {
+			basic_auth admin passeway
+			hide_ip
+			hide_via
+			probe_resistance
+		}
+		file_server {
+			root /var/www/html
+		}
+	}
+}
+
+example.com {
+	route /xray/* {
+		reverse_proxy http://127.0.0.1:8443
+	}
+
+	file_server {
+		root /var/www/html
+	}
+}

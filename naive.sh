@@ -207,8 +207,22 @@ EOF
   # 获取IP所在国家
   IP_COUNTRY=$(curl -s http://ipinfo.io/${HOST_IP}/country)
 
+  # 生成客户端配置信息
+  cat << EOF > /etc/caddy/config.txt
+
+naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${IP_COUNTRY}
+
+{
+  "listen": "socks://127.0.0.1:1080",
+  "proxy": "https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}"
+}
+
+EOF
+
+
   # 输出 NaïveProxy 配置
   echo "naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${IP_COUNTRY}"
+
   cat <<EOF
 {
   "listen": "socks://127.0.0.1:1080",
@@ -216,6 +230,7 @@ EOF
 }
 EOF
 }
+
 
 # 启动 NaïveProxy
 start_naiveproxy() {
@@ -236,6 +251,82 @@ stop_naiveproxy() {
     echo "NaïveProxy 停止失败"
   fi
 }
+
+
+
+# 更新 NaïveProxy
+update_naiveproxy() {
+  echo "正在更新 NaïveProxy"
+
+  #停止 Caddy 服务器
+  systemctl stop caddy
+
+  # 更新和升级系统包
+  echo "正在升级和更新系统包"
+  if ! apt-get update && apt-get upgrade -y; then
+    echo "系统包更新失败。请检查网络连接或包管理器。"
+    return 1
+  fi
+
+  # 安装 Go 语言
+  echo "正在安装Go"
+  if ! apt-get install -y software-properties-common; then
+    echo "无法安装 software-properties-common。请检查包管理器。"
+    return 1
+  fi
+
+  if ! add-apt-repository -y ppa:longsleep/golang-backports && apt-get update; then
+    echo "无法添加 Go 的 PPA，请检查网络连接。"
+    return 1
+  fi
+
+  if ! apt-get install -y golang-go; then
+    echo "无法安装 Go，请检查包管理器。"
+    return 1
+  fi
+
+  # 编译带有 forwardproxy 的 Caddy 服务器
+  echo "正在编译 Caddy"
+  if ! go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; then
+    echo "无法安装 xcaddy。"
+    return 1
+  fi
+
+  if ! ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive; then
+    echo "无法编译带有 forwardproxy 的 Caddy。"
+    return 1
+  fi
+
+  # 检查 Caddy 是否成功编译
+  if [[ ! -f /root/caddy ]]; then
+    echo "Caddy 编译失败，/root/caddy 文件不存在"
+    return 1
+  fi
+
+  # 移动 Caddy 到 /usr/bin/ 并确保具有执行权限
+  if ! mv /root/caddy /usr/bin/; then
+    echo "无法将 Caddy 移动到 /usr/bin/"
+    return 1
+  fi
+
+  if ! chmod +x /usr/bin/caddy; then
+    echo "无法为 Caddy 设置执行权限"
+    return 1
+  fi
+
+  # 启动 Caddy 服务器
+  systemctl start caddy
+
+  echo "NaïveProxy 更新成功"
+}
+
+# 查看 NaïveProxy
+view_naiveproxy() {
+  cat /etc/caddy/config.txt
+}
+
+
+
 
 # 卸载 NaïveProxy
 uninstall_naiveproxy() {
@@ -276,10 +367,12 @@ show_menu() {
   echo -e "${GREEN}当前状态: $(if [ ${naiveproxy_status} -eq 0 ]; then echo "${GREEN}已安装${RESET}"; else echo "${RED}未安装${RESET}"; fi)${RESET}"
   echo -e "${GREEN}运行状态: $(if [ ${naiveproxy_running} -eq 0 ]; then echo "${GREEN}已运行${RESET}"; else echo "${RED}未运行${RESET}"; fi)${RESET}"
   echo ""
-  echo "1. 安装 NaïveProxy"
-  echo "2. 启动 NaïveProxy"
-  echo "3. 停止 NaïveProxy"
-  echo "4. 卸载 NaïveProxy"
+  echo "1. 安装 NaïveProxy 服务"
+  echo "2. 启动 NaïveProxy 服务"
+  echo "3. 停止 NaïveProxy 服务"
+  echo "4. 卸载 NaïveProxy 服务"
+  echo "5. 更新 NaïveProxy 内核"
+  echo "6. 查看 NaïveProxy 配置"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"
   read -p "请输入选项编号: " choice
@@ -304,6 +397,12 @@ while true; do
       ;;
     4)
       uninstall_naiveproxy
+      ;;
+    5)
+      update_naiveproxy
+      ;;
+    6)
+      view_naiveproxy
       ;;
     0)
       echo -e "${GREEN}已退出 NaïveProxy${RESET}"

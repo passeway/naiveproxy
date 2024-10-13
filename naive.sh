@@ -320,9 +320,18 @@ update_naiveproxy() {
   echo "NaïveProxy 更新成功"
 }
 
-# 查看 NaïveProxy
+
+# 查看 NaïveProxy 配置
 view_naiveproxy() {
   cat /etc/caddy/config.txt
+}
+
+
+
+
+# 重载 NaïveProxy 配置
+reload_naiveproxy() {
+  caddy reload --config /etc/caddy/Caddyfile
 }
 
 
@@ -372,7 +381,8 @@ show_menu() {
   echo "3. 停止 NaïveProxy 服务"
   echo "4. 卸载 NaïveProxy 服务"
   echo "5. 更新 NaïveProxy 内核"
-  echo "6. 查看 NaïveProxy 配置"
+  echo "6. 重载 NaïveProxy 配置"
+  echo "7. 查看 NaïveProxy 配置"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"
   read -p "请输入选项编号: " choice
@@ -402,6 +412,9 @@ while true; do
       update_naiveproxy
       ;;
     6)
+      reload_naiveproxy
+      ;;      
+    7)
       view_naiveproxy
       ;;
     0)

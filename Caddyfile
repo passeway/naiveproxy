@@ -34,7 +34,7 @@ example.com {
 	order forward_proxy before reverse_proxy # 定义 forward_proxy 优先级在 reverse_proxy 之前
 }
 
-:443 xtom.passeway.de {
+:443 example.com {
 	tls me@gmail.com # 使用 me@gmail.com 的 TLS 证书
 	route {
 		forward_proxy {

@@ -3,7 +3,7 @@
 ![preview](预览.png)
 ## 一键脚本
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh)
+bash <(curl -fsSL naiveproxy.vercel.app)
 ```
 
 ## 安装 NaïveProxy

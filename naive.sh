@@ -31,6 +31,9 @@ check_naiveproxy_running() {
 install_naiveproxy() {
   echo "正在安装 NaïveProxy"
 
+  # 检查 80 端口
+  check_80
+
   # 读取用户输入的域名
   read -p "请输入您的已解析域名: " domain_name
 
@@ -219,7 +222,6 @@ naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${
 
 EOF
 
-
   # 输出 NaïveProxy 配置
   echo "naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${IP_COUNTRY}"
 
@@ -230,6 +232,35 @@ EOF
 }
 EOF
 }
+
+# 检查 80 端口
+check_80() {
+  if [[ -z $(type -P lsof) ]]; then
+    if [[ ! $SYSTEM == "CentOS" ]]; then
+      ${PACKAGE_UPDATE[int]}
+    fi
+    ${PACKAGE_INSTALL[int]} lsof
+  fi
+  
+  echo "正在检测 80 端口是否占用"
+  sleep 1
+  
+  if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
+    echo "检测目前 80 端口未被占用"
+    sleep 1
+  else
+    echo "检测到目前 80 端口被其他程序占用，以下为占用程序信息"
+    lsof -i:"80"
+    read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
+    if [[ $yn =~ "Y"|"y" ]]; then
+      lsof -i:"80" | awk '{print $2}' | grep -v "PID" | xargs kill -9
+      sleep 1
+    else
+      exit 1
+    fi
+  fi
+}
+
 
 
 # 启动 NaïveProxy

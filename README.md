@@ -62,7 +62,7 @@ caddy fmt --overwrite /etc/caddy/Caddyfile
 ```
 caddy validate --config /etc/caddy/Caddyfile
 ```
-创建 caddy 的Linux 组和用户
+创建 Caddy 的Linux 组和用户
 ```
 groupadd --system caddy
 
@@ -100,7 +100,7 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 [Install]
 WantedBy=multi-user.target
 ```
-启动 naiveproxy 服务
+启动 Naive 服务
 ```
 systemctl daemon-reload && \
 systemctl enable caddy && \
@@ -131,14 +131,19 @@ systemctl reload caddy
 ```
 systemctl stop caddy
 ```
-运行 Caddy 服务
-```
-/usr/bin/caddy run --config /etc/caddy/Caddyfile
-```
 查看 Caddy 日志
 ```
 journalctl -u caddy --no-pager
 ```
+重载 Caddy 配置
+```
+caddy reload --config /etc/caddy/Caddyfile
+```
+运行 Caddy 服务
+```
+/usr/bin/caddy run --config /etc/caddy/Caddyfile
+```
+
 查看 Caddy 证书
 ```
 ls -a /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/

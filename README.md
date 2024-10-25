@@ -1,6 +1,6 @@
 ## 终端预览
 
-![preview](img.png)
+![preview](image.png)
 ## 一键脚本
 ```
 bash <(curl -fsSL naiveproxy.vercel.app)

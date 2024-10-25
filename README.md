@@ -3,7 +3,7 @@
 ![preview](image.png)
 ## 一键脚本
 ```
-bash <(curl -fsSL naiveproxy.vercel.app)
+bash <(curl -fsSL naiveproxy-sigma.vercel.app)
 ```
 
 ## 安装 NaïveProxy

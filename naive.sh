@@ -40,7 +40,6 @@ check_80() {
   sleep 1
   
   if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
-    echo "检测 80 端口未被占用"
     sleep 1
   else
     echo "检测 80 端口被其他程序占用，以下为占用程序信息"

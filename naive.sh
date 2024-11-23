@@ -70,6 +70,16 @@ install_naiveproxy() {
     return 1
   fi
 
+  # 检查域名解析是否指向本机
+  domain_ip=$(getent hosts "${domain_name}" | awk '{ print $1 }' | head -n 1)
+  local_ip=$(curl -s http://ipinfo.io/ip)
+
+  if [[ -z "${domain_ip}" || "${domain_ip}" != "${local_ip}" ]]; then
+    echo "域名解析的 IP 地址 (${domain_ip}) 与本机外部 IP 地址 (${local_ip}) 不一致，请检查域名解析设置"
+    exit 1
+  fi
+  echo "域名解析正确，继续安装"
+
   # 生成安全范围内的随机端口
   random_http_port=$((1024 + RANDOM % (65535 - 1024)))
   random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))

@@ -22,7 +22,10 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
 chmod +x caddy && \
 mv caddy /usr/bin/
 ```
-
+查看80 443 端口
+```
+sudo ss -tuln | grep -E ':80|:443'
+```
 创建 /var/www/html 目录
 ```
 mkdir -p /var/www/html

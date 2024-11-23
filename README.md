@@ -37,21 +37,29 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
 {
-	http_port 8880
+    # 定义全局配置，例如 HTTP 端口
+    http_port 8880
 }
+
+# 定义站点 block，监听 :8080 和 example.com:8080
 :8080, example.com:8080 {
-	tls me@gmail.com
-	route {
-		forward_proxy {
-			basic_auth admin passeway
-			hide_ip
-			hide_via
-			probe_resistance
-		}
-		file_server {
-			root /var/www/html
-		}
-	}
+    # 使用 Let's Encrypt 自动生成 TLS 证书
+    tls admin@gmail.com
+    
+    route {
+        # 配置正向代理功能
+        forward_proxy {
+            basic_auth admin passeway # 设置代理的基本身份验证
+            hide_ip                   # 隐藏真实 IP 地址
+            hide_via                  # 隐藏 Via 头
+            probe_resistance          # 启用探测防御
+        }
+
+        # 配置文件服务器
+        file_server {
+            root /var/www/html        # 指定文件服务器的根目录
+        }
+    }
 }
 ```
 格式化 Caddyfile 覆盖原配置文件

@@ -36,14 +36,14 @@ check_80() {
     ${PACKAGE_INSTALL[int]} lsof
   fi
   
-  echo "正在检测 80 端口是否占用"
+  echo "检测 80 端口是否占用"
   sleep 1
   
   if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
-    echo "检测目前 80 端口未被占用"
+    echo "检测 80 端口未被占用"
     sleep 1
   else
-    echo "检测到目前 80 端口被其他程序占用，以下为占用程序信息"
+    echo "检测 80 端口被其他程序占用，以下为占用程序信息"
     lsof -i:"80"
     read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
     if [[ $yn =~ "Y"|"y" ]]; then

@@ -77,7 +77,7 @@ install_naiveproxy() {
     echo "域名解析的 IP 地址 (${domain_ip}) 与本机外部 IP 地址 (${local_ip}) 不一致，请检查域名解析设置"
     exit 1
   fi
-  echo "域名解析正确，继续安装"
+  echo "域名解析正确继续安装"
 
   # 生成安全范围内的随机端口
   random_http_port=$((1024 + RANDOM % (65535 - 1024)))

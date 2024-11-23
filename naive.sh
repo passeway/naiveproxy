@@ -27,6 +27,34 @@ check_naiveproxy_running() {
   fi
 }
 
+# 检查 80 端口
+check_80() {
+  if [[ -z $(type -P lsof) ]]; then
+    if [[ ! $SYSTEM == "CentOS" ]]; then
+      ${PACKAGE_UPDATE[int]}
+    fi
+    ${PACKAGE_INSTALL[int]} lsof
+  fi
+  
+  echo "正在检测 80 端口是否占用"
+  sleep 1
+  
+  if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
+    echo "检测目前 80 端口未被占用"
+    sleep 1
+  else
+    echo "检测到目前 80 端口被其他程序占用，以下为占用程序信息"
+    lsof -i:"80"
+    read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
+    if [[ $yn =~ "Y"|"y" ]]; then
+      lsof -i:"80" | awk '{print $2}' | grep -v "PID" | xargs kill -9
+      sleep 1
+    else
+      exit 1
+    fi
+  fi
+}
+
 # 安装 NaïveProxy
 install_naiveproxy() {
   echo "正在安装 NaïveProxy"
@@ -46,9 +74,10 @@ install_naiveproxy() {
   random_http_port=$((1024 + RANDOM % (65535 - 1024)))
   random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))
 
-  # 生成随机用户名和密码
+  # 生成随机邮箱用户名和密码
   admin_user=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
   admin_pass=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
+  admin_mail=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
 
   # 更新和升级系统包
   echo "正在升级和更新系统包"
@@ -129,7 +158,7 @@ install_naiveproxy() {
   http_port ${random_http_port}
 }
 :${random_proxy_port}, ${domain_name}:${random_proxy_port}
-tls me@gmail.com
+tls ${admin_mail}@gmail.com
 route {
   forward_proxy {
     basic_auth ${admin_user} ${admin_pass}
@@ -231,34 +260,6 @@ EOF
   "proxy": "https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}"
 }
 EOF
-}
-
-# 检查 80 端口
-check_80() {
-  if [[ -z $(type -P lsof) ]]; then
-    if [[ ! $SYSTEM == "CentOS" ]]; then
-      ${PACKAGE_UPDATE[int]}
-    fi
-    ${PACKAGE_INSTALL[int]} lsof
-  fi
-  
-  echo "正在检测 80 端口是否占用"
-  sleep 1
-  
-  if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
-    echo "检测目前 80 端口未被占用"
-    sleep 1
-  else
-    echo "检测到目前 80 端口被其他程序占用，以下为占用程序信息"
-    lsof -i:"80"
-    read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
-    if [[ $yn =~ "Y"|"y" ]]; then
-      lsof -i:"80" | awk '{print $2}' | grep -v "PID" | xargs kill -9
-      sleep 1
-    else
-      exit 1
-    fi
-  fi
 }
 
 

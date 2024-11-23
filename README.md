@@ -22,10 +22,7 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
 chmod +x caddy && \
 mv caddy /usr/bin/
 ```
-查看80 443 端口
-```
-sudo ss -tuln | grep -E ':80|:443'
-```
+
 创建 /var/www/html 目录
 ```
 mkdir -p /var/www/html
@@ -33,6 +30,10 @@ mkdir -p /var/www/html
 下载文件到 /var/www/html
 ```
 wget -O /var/www/html/index.html https://gitlab.com/passeway/naiveproxy/raw/main/index.html
+```
+查看80 443 端口是否占用
+```
+sudo ss -tuln | grep -E ':80|:443'
 ```
 创建 Caddyfile 配置文件
 ```

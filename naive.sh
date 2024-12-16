@@ -29,30 +29,26 @@ check_naiveproxy_running() {
 
 # 检查 80 端口
 check_80() {
-  if [[ -z $(type -P lsof) ]]; then
-    if [[ ! $SYSTEM == "CentOS" ]]; then
-      ${PACKAGE_UPDATE[int]}
-    fi
-    ${PACKAGE_INSTALL[int]} lsof
-  fi
-  
   echo "检测 80 端口是否占用"
   sleep 1
-  
-  if [[ $(lsof -i:"80" | grep -i -c "listen") -eq 0 ]]; then
+
+  # 检查端口是否被占用
+  if [[ $(ss -tuln | awk '$5 ~ /:80$/ {print $0}' | wc -l) -eq 0 ]]; then
     sleep 1
   else
-    echo "检测 80 端口被其他程序占用，以下为占用程序信息"
-    lsof -i:"80"
+    echo "检测到 80 端口被其他程序占用，以下为占用程序信息："
+    ss -tuln | awk '$5 ~ /:80$/ {print $0}'
     read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
-    if [[ $yn =~ "Y"|"y" ]]; then
-      lsof -i:"80" | awk '{print $2}' | grep -v "PID" | xargs kill -9
+    if [[ $yn =~ [Yy] ]]; then
+      # 找出占用 80 端口的进程 ID 并终止
+      ss -tulnp | awk '$5 ~ /:80$/ {print $6}' | sed 's/[^0-9]*//g' | xargs -r kill -9
       sleep 1
     else
       exit 1
     fi
   fi
 }
+
 
 # 安装 NaïveProxy
 install_naiveproxy() {

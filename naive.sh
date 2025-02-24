@@ -353,16 +353,6 @@ view_naiveproxy() {
 }
 
 
-
-
-# 重启 NaïveProxy 配置
-reload_naiveproxy() {
-  systemctl reload caddy && systemctl status caddy
-}
-
-
-
-
 # 卸载 NaïveProxy
 uninstall_naiveproxy() {
   echo "正在卸载 NaïveProxy"
@@ -407,8 +397,7 @@ show_menu() {
   echo "3. 停止 NaïveProxy 服务"
   echo "4. 卸载 NaïveProxy 服务"
   echo "5. 更新 NaïveProxy 内核"
-  echo "6. 重启 NaïveProxy 服务"
-  echo "7. 查看 NaïveProxy 配置"
+  echo "6. 查看 NaïveProxy 配置"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"
   read -p "请输入选项编号: " choice
@@ -436,11 +425,8 @@ while true; do
       ;;
     5)
       update_naiveproxy
-      ;;
-    6)
-      reload_naiveproxy
       ;;      
-    7)
+    6)
       view_naiveproxy
       ;;
     0)

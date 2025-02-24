@@ -195,7 +195,7 @@ systemctl daemon-reload
 rm ~/go/bin/xcaddy
 ```
 
-## NaïveProxy.json 格式的代理配置
+## NaïveProxy.json
 ```
 {
   "listen": "socks://127.0.0.1:1080",

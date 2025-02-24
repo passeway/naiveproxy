@@ -23,14 +23,6 @@ chmod +x caddy && \
 mv caddy /usr/bin/
 ```
 
-创建 /var/www/html 目录
-```
-mkdir -p /var/www/html
-```
-下载文件到 /var/www/html
-```
-wget -O /var/www/html/index.html https://gitlab.com/passeway/naiveproxy/raw/main/index.html
-```
 查看80 443 端口是否占用
 ```
 sudo ss -tuln | grep -E ':80|:443'
@@ -41,29 +33,20 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
 {
-    # 定义全局配置，例如 HTTP 端口
-    http_port 8880
+  http_port 80
 }
-
-# 定义站点 block，监听 :8080 和 example.com:8080
-:8080, example.com:8080 {
-    # 使用 Let's Encrypt 自动生成 TLS 证书
-    tls admin@gmail.com
-    
-    route {
-        # 配置正向代理功能
-        forward_proxy {
-            basic_auth admin passeway # 设置代理的基本身份验证
-            hide_ip                   # 隐藏真实 IP 地址
-            hide_via                  # 隐藏 Via 头
-            probe_resistance          # 启用探测防御
-        }
-
-        # 配置文件服务器
-        file_server {
-            root /var/www/html        # 指定文件服务器的根目录
-        }
-    }
+:443, example.com:443
+tls me@example.com
+route {
+  forward_proxy {
+    basic_auth user pass
+    hide_ip
+    hide_via
+    probe_resistance
+  }
+ reverse_proxy https://bing.com {
+    header_up Host {upstream_hostport}
+  }
 }
 ```
 格式化 Caddyfile 覆盖原配置文件
@@ -199,7 +182,7 @@ rm ~/go/bin/xcaddy
 ```
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://admin:passeway@example.com:8080"
+  "proxy": "https://admin:passeway@example.com:443"
 }
 ```
 

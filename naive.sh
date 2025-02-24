@@ -357,7 +357,7 @@ view_naiveproxy() {
 
 # 重启 NaïveProxy 配置
 reload_naiveproxy() {
-  systemctl reload caddy
+  systemctl reload caddy && systemctl status caddy
 }
 
 

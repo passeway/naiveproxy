@@ -368,8 +368,7 @@ view_naiveproxy() {
 
 # 重载 NaïveProxy 配置
 reload_naiveproxy() {
-  caddy fmt --overwrite /etc/caddy/Caddyfile
-  caddy reload --config /etc/caddy/Caddyfile
+  caddy fmt --overwrite /etc/caddy/Caddyfile && caddy reload --config /etc/caddy/Caddyfile
 }
 
 

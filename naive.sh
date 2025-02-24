@@ -139,17 +139,6 @@ install_naiveproxy() {
     echo "Caddy成功移动到 /usr/bin"
   fi
 
-  # 创建 /var/www/html 目录并下载示例 HTML 文件
-  echo "创建并下载 /var/www/html"
-  if ! mkdir -p /var/www/html; then
-    echo "无法创建 /var/www/html 目录"
-    return 1
-  fi
-
-  if ! wget -O /var/www/html/index.html https://gitlab.com/passeway/naiveproxy/raw/main/index.html; then
-    echo "无法下载示例 HTML 文件"
-    return 1
-  fi
 
   # 创建并配置 Caddyfile
   echo "正在创建并配置 Caddyfile"
@@ -171,9 +160,9 @@ route {
     hide_via
     probe_resistance
   }
-  file_server {
-    root /var/www/html
-  }
+	reverse_proxy https://bing.com {
+		header_up Host {upstream_hostport}
+	}
 }
 EOF
 
@@ -366,9 +355,9 @@ view_naiveproxy() {
 
 
 
-# 重载 NaïveProxy 配置
+# 重启 NaïveProxy 配置
 reload_naiveproxy() {
-  caddy fmt --overwrite /etc/caddy/Caddyfile && caddy reload --config /etc/caddy/Caddyfile
+  systemctl reload caddy
 }
 
 
@@ -418,7 +407,7 @@ show_menu() {
   echo "3. 停止 NaïveProxy 服务"
   echo "4. 卸载 NaïveProxy 服务"
   echo "5. 更新 NaïveProxy 内核"
-  echo "6. 重载 NaïveProxy 配置"
+  echo "6. 重启 NaïveProxy 服务"
   echo "7. 查看 NaïveProxy 配置"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"

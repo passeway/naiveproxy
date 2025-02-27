@@ -74,8 +74,13 @@ generate_free_port() {
 
 # 安装 NaïveProxy
 install_naiveproxy() {
-  echo "正在安装 NaïveProxy"
 
+  # 检查 80 端口和root权限
+  check_root
+  check_80
+  
+  echo "正在安装 NaïveProxy"
+  
   # 读取用户输入的域名
   read -p "请输入您的已解析域名: " domain_name
 
@@ -83,9 +88,6 @@ install_naiveproxy() {
     echo "域名不能为空。请重新运行脚本并输入有效的域名。"
     return 1
   fi
-  
-  # 检查 80 端口
-  check_80
   
   # 检查域名解析是否指向本机
   domain_ip=$(getent hosts "${domain_name}" | awk '{ print $1 }' | head -n 1)

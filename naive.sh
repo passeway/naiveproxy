@@ -74,13 +74,12 @@ generate_free_port() {
 
 # 安装 NaïveProxy
 install_naiveproxy() {
+  echo "正在安装 NaïveProxy"
 
   # 检查 80 端口和root权限
   check_root
   check_80
-  
-  echo "正在安装 NaïveProxy"
-  
+    
   # 读取用户输入的域名
   read -p "请输入您的已解析域名: " domain_name
 

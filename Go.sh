@@ -152,7 +152,7 @@ install_go(){
             return
         fi
     fi
-    file_name="go${install_version}.$vdis.tar.gz"
+    file_name="go${install_version}。$vdis.tar.gz"
     local temp_path=`mktemp -d`
 
     curl -H 'Cache-Control: no-cache' -L https://dl.google.com/go/$file_name -o $file_name
@@ -194,7 +194,7 @@ main(){
     setup_env
     setup_proxy
     install_updater
-    echo -e "golang `color_echo $blue $install_version` 安装成功!"
+    go version
 }
 
 main

@@ -132,6 +132,10 @@ install_naiveproxy() {
     return 1
   fi
 
+  # 输出 Go 版本
+  echo "Go 版本：$(go version)"
+
+
   # 编译带有 forwardproxy 的 Caddy 服务器
   echo "正在编译 Caddy"
   if ! go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; then

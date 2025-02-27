@@ -64,7 +64,7 @@ setup_env(){
     fi
 
     # 设置 GOPATH 为默认路径
-    GOPATH="/home/go"
+    GOPATH="/root/go"
     echo "GOPATH值为: `color_echo $blue $GOPATH`"
     echo "export GOPATH=$GOPATH" >> $profile_path
     echo 'export PATH=$PATH:$GOPATH/bin' >> $profile_path

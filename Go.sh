@@ -1,253 +1,188 @@
 #!/bin/bash
 
-# 颜色设置
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-blue='\033[0;34m'
-purple='\033[0;35m'
-cyan='\033[0;36m'
-white='\033[0;37m'
-NC='\033[0m' # No Color
+[[ -f /etc/redhat-release ]] && unalias -a
 
-# 打印彩色文本的函数
-color_echo() {
-    color=$1
-    shift
-    echo -e "${color}$@${NC}"
+can_google=1
+force_mode=0
+sudo=""
+os="Linux"
+install_version=""
+proxy_url="https://goproxy.cn"
+
+#######color code########
+red="31m"      
+green="32m"  
+yellow="33m" 
+blue="36m"
+fuchsia="35m"
+
+color_echo(){
+    echo -e "\033[$1${@:2}\033[0m"
 }
 
-# 检测是否可以访问Google
-check_google() {
-    if curl -s --connect-timeout 5 -m 5 google.com >/dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# 检查是否已安装Go
-check_go_installed() {
-    if command -v go >/dev/null 2>&1; then
-        current_version=$(go version | awk '{print $3}' | sed 's/go//')
-        return 0
-    else
-        return 1
-    fi
-}
-
-# 检测系统架构
-check_arch() {
-    ARCH=$(uname -m)
-    case $ARCH in
-        x86_64)
-            GOARCH="amd64"
-            ;;
-        aarch64|arm64)
-            GOARCH="arm64"
-            ;;
+#######get params#########
+while [[ $# > 0 ]];do
+    case "$1" in
+        -v|--version)
+        install_version="$2"
+        echo -e "准备安装$(color_echo ${blue} $install_version)版本golang..\n"
+        shift
+        ;;
+        -f)
+        force_mode=1
+        echo -e "强制更新golang..\n"
+        ;;
         *)
-            color_echo $red "不支持的架构: $ARCH"
-            exit 1
-            ;;
+                # unknown option
+        ;;
     esac
-    color_echo $green "检测到系统架构: $ARCH, 将使用Go $GOARCH 版本"
-}
+    shift # past argument or value
+done
+#############################
 
-# 获取最新版本的Go
-get_latest_version() {
-    echo "正在获取最新版golang..."
-    count=0
-    
-    # 检查是否可以访问Google
-    if check_google; then
-        can_google=0
-    else
-        can_google=1
-    fi
-    
-    while :
-    do
-        install_version=""
-        if [[ $can_google == 0 ]]; then
-            install_version=$(curl -s --connect-timeout 15 -H 'Cache-Control: no-cache' https://go.dev/dl/|grep -w downloadBox|grep src|grep -oE '[0-9]+\.[0-9]+\.?[0-9]*'|head -n 1)
-        else
-            install_version=$(curl -s --connect-timeout 15 -H 'Cache-Control: no-cache' https://github.com/golang/go/tags|grep releases/tag|grep -v rc|grep -v beta|grep -oE '[0-9]+\.[0-9]+\.?[0-9]*'|head -n 1)
-        fi
-        
-        # 处理版本号末尾可能有的点号
-        [[ ${install_version: -1} == '.' ]] && install_version=${install_version%?}
-        
-        if [[ -z $install_version ]]; then
-            if [[ $count -lt 3 ]]; then
-                color_echo $yellow "获取go版本号超时, 正在重试..."
-            else
-                color_echo $red "\n获取go版本号失败!"
-                return 1
-            fi
-        else
-            break
-        fi
-        count=$((count+1))
-    done
-    
-    color_echo $green "最新版golang: $(color_echo $blue $install_version)"
-    
-    # 检查当前版本
-    if check_go_installed; then
-        if [[ "$current_version" == "$install_version" ]]; then
-            color_echo $green "当前Go版本 $current_version 已是最新版本，无需更新"
-            return 2
-        else
-            color_echo $yellow "当前Go版本: $current_version, 将更新到: $install_version"
-        fi
-    fi
-    
-    return 0
-}
-
-# 下载并安装Go
-download_and_install() {
-    local version=$1
-    local arch=$2
-    
-    # 构建下载URL
-    DOWNLOAD_URL="https://dl.google.com/go/go${version}.linux-${arch}.tar.gz"
-    FILENAME="go${version}.linux-${arch}.tar.gz"
-    
-    color_echo $green "下载链接: $DOWNLOAD_URL"
-    
-    # 下载Go安装包
-    color_echo $green "开始下载..."
-    wget -q --show-progress "$DOWNLOAD_URL" -O "$FILENAME"
-    
-    if [ $? -ne 0 ]; then
-        color_echo $yellow "从Google下载失败，尝试从golang.org下载..."
-        BACKUP_URL="https://golang.org/dl/go${version}.linux-${arch}.tar.gz"
-        color_echo $green "备用下载链接: $BACKUP_URL"
-        wget -q --show-progress "$BACKUP_URL" -O "$FILENAME"
-        
-        if [ $? -ne 0 ]; then
-            color_echo $yellow "从golang.org下载失败，尝试从GitHub下载..."
-            GITHUB_URL="https://github.com/golang/go/releases/download/go${version}/go${version}.linux-${arch}.tar.gz"
-            color_echo $green "GitHub下载链接: $GITHUB_URL"
-            wget -q --show-progress "$GITHUB_URL" -O "$FILENAME"
-            
-            if [ $? -ne 0 ]; then
-                color_echo $red "所有下载尝试均失败，请检查网络连接或手动下载"
-                return 1
-            fi
-        fi
-    fi
-    
-    color_echo $green "下载完成: $FILENAME"
-    
-    # 删除旧版本(如果存在)
-    color_echo $green "移除旧版本Go(如果存在)..."
-    sudo rm -rf /usr/local/go
-    
-    # 解压到/usr/local
-    color_echo $green "解压Go到/usr/local目录..."
-    sudo tar -C /usr/local -xzf "$FILENAME"
-    
-    if [ $? -ne 0 ]; then
-        color_echo $red "解压失败"
-        return 1
-    fi
-    
-    # 设置环境变量
-    color_echo $green "设置环境变量..."
-    
-    # 为当前用户设置
-    if ! grep -q "export PATH=\$PATH:/usr/local/go/bin" ~/.profile; then
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
-        color_echo $green "已添加Go到用户PATH环境变量"
-    else
-        color_echo $green "Go环境变量已存在于~/.profile"
-    fi
-    
-    # 为系统所有用户设置
-    if [ $(id -u) -eq 0 ]; then
-        if ! grep -q "export PATH=\$PATH:/usr/local/go/bin" /etc/profile; then
-            echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-            color_echo $green "已添加Go到系统级PATH环境变量"
-        fi
-    fi
-    
-    # 设置GOPATH
-    if ! grep -q "export GOPATH=\$HOME/go" ~/.profile; then
-        echo 'export GOPATH=$HOME/go' >> ~/.profile
-        echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.profile
-        color_echo $green "已设置GOPATH环境变量"
-    fi
-    
-    # 应用环境变量到当前会话
-    export PATH=$PATH:/usr/local/go/bin
-    export GOPATH=$HOME/go
-    export PATH=$PATH:$GOPATH/bin
-    
-    # 创建Go工作目录
-    if [ ! -d "$HOME/go" ]; then
-        mkdir -p "$HOME/go/src" "$HOME/go/bin" "$HOME/go/pkg"
-        color_echo $green "已创建Go工作目录: $HOME/go"
-    fi
-    
-    # 清理下载文件
-    color_echo $green "清理下载文件..."
-    rm "$FILENAME"
-    
-    # 验证安装
-    color_echo $green "验证Go安装..."
-    GO_VERSION_CHECK=$(/usr/local/go/bin/go version 2>/dev/null)
-    
-    if [ $? -eq 0 ]; then
-        color_echo $green "Go安装成功!"
-        color_echo $blue "$GO_VERSION_CHECK"
+ip_is_connect(){
+    ping -c2 -i0.3 -W1 $1 &>/dev/null
+    if [ $? -eq 0 ];then
         return 0
     else
-        color_echo $red "Go安装可能有问题，请检查"
         return 1
     fi
 }
 
-# 主函数
-main() {
-    # 检查系统架构
-    check_arch
-    
-    # 获取最新版本
-    get_latest_version
-    result=$?
-    
-    if [ $result -eq 1 ]; then
-        color_echo $red "获取版本信息失败，退出安装"
-        exit 1
-    elif [ $result -eq 2 ]; then
-        color_echo $green "已安装最新版本，无需更新"
-        exit 0
+setup_env(){
+    if [[ $sudo == "" ]];then
+        profile_path="/etc/profile"
+    elif [[ -e ~/.zshrc ]];then
+        profile_path="$HOME/.zprofile"
     fi
-    
-    # 下载并安装
-    download_and_install "$install_version" "$GOARCH"
-    
-    if [ $? -eq 0 ]; then
-        color_echo $green "Go $install_version 安装完成！"
-        
-        # 自动应用环境变量
-        color_echo $green "正在应用环境变量更改..."
-        
-        # 自动加载环境变量
-        source ~/.profile
-        
-        color_echo $green "Go 环境已激活"
-        color_echo $blue "Go版本: $(go version)"
-        color_echo $green "GOROOT: $GOROOT"
-        color_echo $green "GOPATH: $GOPATH"
-        
+    if [[ $sudo == "" && -z `echo $GOPATH` ]];then
+        GOPATH="/home/go"  # 使用默认路径
+        echo "GOPATH值为: `color_echo $blue $GOPATH`"
+        echo "export GOPATH=$GOPATH" >> $profile_path
+        echo 'export PATH=$PATH:$GOPATH/bin' >> $profile_path
+        mkdir -p $GOPATH
+    fi
+    if [[ -z `echo $PATH|grep /usr/local/go/bin` ]];then
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> $profile_path
+    fi
+    source $profile_path
+}
+
+check_network(){
+    ip_is_connect "golang.org"
+    [[ ! $? -eq 0 ]] && can_google=0
+}
+
+setup_proxy(){
+    if [[ $can_google == 0 && `go env|grep proxy.golang.org` ]]; then
+        go env -w GO111MODULE=on
+        go env -w GOPROXY=$proxy_url,direct
+        color_echo $green "当前网络环境为国内环境, 成功设置goproxy代理!"
+    fi
+}
+
+sys_arch(){
+    arch=$(uname -m)
+    if [[ `uname -s` == "Darwin" ]];then
+        os="Darwin"
+        if [[ "$arch" == "arm64" ]];then
+            vdis="darwin-arm64"
+        else
+            vdis="darwin-amd64"
+        fi
     else
-        color_echo $red "Go安装失败，请检查错误信息"
-        exit 1
+        if [[ "$arch" == "i686" ]] || [[ "$arch" == "i386" ]]; then
+            vdis="linux-386"
+        elif [[ "$arch" == *"armv7"* ]] || [[ "$arch" == "armv6l" ]]; then
+            vdis="linux-armv6l"
+        elif [[ "$arch" == *"armv8"* ]] || [[ "$arch" == "aarch64" ]]; then
+            vdis="linux-arm64"
+        elif [[ "$arch" == *"s390x"* ]]; then
+            vdis="linux-s390x"
+        elif [[ "$arch" == "ppc64le" ]]; then
+            vdis="linux-ppc64le"
+        elif [[ "$arch" == "x86_64" ]]; then
+            vdis="linux-amd64"
+        fi
     fi
+    [ $(id -u) != "0" ] && sudo="sudo"
+}
+
+install_go(){
+    if [[ -z $install_version ]];then
+        echo "正在获取最新版golang..."
+        count=0
+        while :
+        do
+            install_version=""
+            if [[ $can_google == 0 ]];then
+                install_version=`curl -s --connect-timeout 15 -H 'Cache-Control: no-cache' https://go.dev/dl/|grep -w downloadBox|grep src|grep -oE '[0-9]+\.[0-9]+\.?[0-9]*'|head -n 1`
+            else
+                install_version=`curl -s --connect-timeout 15 -H 'Cache-Control: no-cache' https://github.com/golang/go/tags|grep releases/tag|grep -v rc|grep -v beta|grep -oE '[0-9]+\.[0-9]+\.?[0-9]*'|head -n 1`
+            fi
+            [[ ${install_version: -1} == '.' ]] && install_version=${install_version%?}
+            if [[ -z $install_version ]];then
+                if [[ $count < 3 ]];then
+                    color_echo $yellow "获取go版本号超时, 正在重试..."
+                else
+                    color_echo $red "\n获取go版本号失败!"
+                    exit 1
+                fi
+            else
+                break
+            fi
+            count=$(($count+1))
+        done
+        echo "最新版golang: `color_echo $blue $install_version`"
+    fi
+    if [[ $force_mode == 0 && `command -v go` ]];then
+        if [[ `go version|awk '{print $3}'|grep -Eo "[0-9.]+"` == $install_version ]];then
+            return
+        fi
+    fi
+    file_name="go${install_version}。$vdis.tar.gz"
+    local temp_path=`mktemp -d`
+
+    curl -H 'Cache-Control: no-cache' -L https://dl.google.com/go/$file_name -o $file_name
+    tar -C $temp_path -xzf $file_name
+    if [[ $? != 0 ]];then
+        color_echo $yellow "\n解压失败! 正在重新下载..."
+        rm -rf $file_name
+        curl -H 'Cache-Control: no-cache' -L https://dl.google.com/go/$file_name -o $file_name
+        tar -C $temp_path -xzf $file_name
+        [[ $? != 0 ]] && { color_echo $yellow "\n解压失败!"; rm -rf $temp_path $file_name; exit 1; }
+
+    fi
+    [[ -e /usr/local/go ]] && $sudo rm -rf /usr/local/go
+    $sudo mv $temp_path/go /usr/local/
+    rm -rf $temp_path $file_name
+}
+
+install_updater(){
+    if [[ $os == "Linux" ]];then
+        if [[ ! -e /usr/local/bin/goupdate || -z `cat /usr/local/bin/goupdate|grep '$@'` ]];then
+            echo 'source <(curl -L https://go-install.netlify.app/install.sh) $@' > /usr/local/bin/goupdate
+            chmod +x /usr/local/bin/goupdate
+        fi
+    elif [[ $os == "Darwin" ]];then
+        if [[ ! -e $HOME/go/bin/goupdate || -z `cat $HOME/go/bin/goupdate|grep '$@'` ]];then
+            cat > $HOME/go/bin/goupdate << 'EOF'
+#!/bin/zsh
+source <(curl -L https://go-install.netlify.app/install.sh) $@ 
+EOF
+            chmod +x $HOME/go/bin/goupdate
+        fi
+    fi
+}
+
+main(){
+    sys_arch
+    check_network
+    install_go
+    setup_env
+    setup_proxy
+    install_updater
+    echo -e "golang `color_echo $blue $install_version` 安装成功!"
 }
 
 main

@@ -194,7 +194,7 @@ main(){
     setup_env
     setup_proxy
     install_updater
-    echo -e "Go `color_echo $blue $install_version` 安装成功"
+    go version
 }
 
 main

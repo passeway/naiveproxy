@@ -145,7 +145,7 @@ install_go(){
             fi
             count=$(($count+1))
         done
-        echo "最新版golang: `color_echo $blue $install_version`"
+        echo "最新版Go: `color_echo $blue $install_version`"
     fi
     if [[ $force_mode == 0 && `command -v go` ]];then
         if [[ `go version|awk '{print $3}'|grep -Eo "[0-9.]+"` == $install_version ]];then

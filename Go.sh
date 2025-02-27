@@ -22,16 +22,25 @@ esac
 
 echo -e "${GREEN}检测到系统架构: $ARCH, 将使用Go $GOARCH 版本${NC}"
 
-# 从Go官网获取最新版本号
+# 从GitHub Go仓库的releases API获取最新版本号
 echo "正在获取Go最新版本信息..."
-LATEST_VERSION=$(curl -s https://golang.org/dl/ | grep -oP 'go[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+LATEST_VERSION=$(curl -s https://go.dev/VERSION?m=text)
 
+# 备选方案：如果上面的方法失败，尝试使用固定版本
 if [ -z "$LATEST_VERSION" ]; then
-    echo -e "${YELLOW}无法获取最新版本号，请检查网络连接${NC}"
-    exit 1
+    echo -e "${YELLOW}无法自动获取最新版本号，使用备选方法...${NC}"
+    # 尝试从golang.org获取
+    LATEST_VERSION=$(curl -s https://golang.org/VERSION?m=text)
 fi
 
-echo -e "${GREEN}找到最新版本: $LATEST_VERSION${NC}"
+# 如果仍然失败，使用硬编码的最新版本
+if [ -z "$LATEST_VERSION" ]; then
+    echo -e "${YELLOW}无法在线获取版本信息，使用内置版本号...${NC}"
+    LATEST_VERSION="go1.22.0"
+    echo -e "${GREEN}使用版本: $LATEST_VERSION${NC}"
+else
+    echo -e "${GREEN}找到最新版本: $LATEST_VERSION${NC}"
+fi
 
 # 构建下载URL
 DOWNLOAD_URL="https://dl.google.com/go/${LATEST_VERSION}.linux-${GOARCH}.tar.gz"
@@ -42,8 +51,16 @@ echo "开始下载 $DOWNLOAD_URL ..."
 wget -q --show-progress $DOWNLOAD_URL -O $FILENAME
 
 if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}下载失败，请检查网络连接或URL是否正确${NC}"
-    exit 1
+    echo -e "${YELLOW}下载失败，尝试备用下载地址...${NC}"
+    # 备用下载地址
+    BACKUP_URL="https://golang.org/dl/${LATEST_VERSION}.linux-${GOARCH}.tar.gz"
+    echo "尝试从 $BACKUP_URL 下载..."
+    wget -q --show-progress $BACKUP_URL -O $FILENAME
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}所有下载尝试均失败，请检查网络连接或手动下载${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${GREEN}下载完成: $FILENAME${NC}"
@@ -68,6 +85,14 @@ if ! grep -q "export PATH=\$PATH:/usr/local/go/bin" ~/.profile; then
     echo -e "${GREEN}已添加Go到PATH环境变量${NC}"
 else
     echo -e "${GREEN}Go环境变量已存在于~/.profile${NC}"
+fi
+
+# 如果是root用户，也添加到系统级profile
+if [ $(id -u) -eq 0 ]; then
+    if ! grep -q "export PATH=\$PATH:/usr/local/go/bin" /etc/profile; then
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
+        echo -e "${GREEN}已添加Go到系统级PATH环境变量${NC}"
+    fi
 fi
 
 # 应用环境变量到当前会话

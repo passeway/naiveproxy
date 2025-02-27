@@ -152,7 +152,7 @@ install_go(){
             return
         fi
     fi
-    file_name="go${install_version}。$vdis.tar.gz"
+    file_name="go${install_version}.$vdis.tar.gz"
     local temp_path=`mktemp -d`
 
     curl -H 'Cache-Control: no-cache' -L https://dl.google.com/go/$file_name -o $file_name

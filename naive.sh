@@ -9,6 +9,16 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 RESET='\033[0m'
 
+
+# 检查是否以 root 权限运行
+check_root() {
+  if [[ $EUID -ne 0 ]]; then
+    echo -e "${RED}错误：请以 root 权限运行此脚本（使用 sudo）${RESET}" | tee -a "$LOG_FILE"
+    exit 1
+  fi
+}
+
+
 # 检查 NaïveProxy 安装状态
 check_naiveproxy_status() {
   if command -v caddy &> /dev/null; then

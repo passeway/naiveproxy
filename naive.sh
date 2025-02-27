@@ -50,6 +50,18 @@ check_80() {
 }
 
 
+# 生成一个未被占用的端口
+generate_free_port() {
+  local port
+  while true; do
+    port=$(shuf -i 1024-65535 -n 1)  # 生成随机端口
+    if ! ss -tuln | grep -q ":$port"; then  # 检查端口是否被占用
+      echo "$port"
+      break
+    fi
+  done
+}
+
 # 安装 NaïveProxy
 install_naiveproxy() {
   echo "正在安装 NaïveProxy"
@@ -76,8 +88,8 @@ install_naiveproxy() {
   echo "域名解析正确继续安装"
 
   # 生成安全范围内的随机端口
-  random_http_port=$((1024 + RANDOM % (65535 - 1024)))
-  random_proxy_port=$((1024 + RANDOM % (65535 - 1024)))
+  random_http_port=$(generate_free_port)
+  random_proxy_port=$(generate_free_port)
 
   # 生成随机邮箱用户名和密码
   admin_user=$(tr -dc A-Za-z < /dev/urandom | head -c 6)

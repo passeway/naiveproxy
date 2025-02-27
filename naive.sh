@@ -115,25 +115,7 @@ install_naiveproxy() {
   fi
 
   # 安装 Go 语言
-  echo "正在安装Go"
-  if ! apt-get install -y software-properties-common; then
-    echo "无法安装 software-properties-common。请检查包管理器。"
-    return 1
-  fi
-
-  if ! add-apt-repository -y ppa:longsleep/golang-backports && apt-get update; then
-    echo "无法添加 Go 的 PPA，请检查网络连接。"
-    return 1
-  fi
-
-  if ! apt-get install -y golang-go; then
-    echo "无法安装 Go，请检查包管理器。"
-    return 1
-  fi
-
-  # 输出 Go 版本
-  echo "Go 版本：$(go version)"
-
+  bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/refs/heads/main/Go.sh)
 
   # 编译带有 forwardproxy 的 Caddy 服务器
   echo "正在编译 Caddy"

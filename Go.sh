@@ -122,7 +122,6 @@ sys_arch(){
 
 install_go(){
     if [[ -z $install_version ]];then
-        echo "正在获取最新版golang..."
         count=0
         while :
         do

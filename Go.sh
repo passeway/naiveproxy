@@ -236,42 +236,18 @@ main() {
         # 自动应用环境变量
         color_echo $green "正在应用环境变量更改..."
         
-        # 将应用环境变量的命令保存到临时文件
-        TEMP_SCRIPT=$(mktemp)
-        cat > $TEMP_SCRIPT << 'EOF'
-#!/bin/bash
-source ~/.profile
-export PS1="(Go env) $PS1"
-echo -e "\033[0;32m环境变量已应用，Go环境已激活\033[0m"
-echo -e "\033[0;34mGo版本: $(go version)\033[0m"
-echo -e "\033[0;32mGOROOT: $GOROOT\033[0m"
-echo -e "\033[0;32mGOPATH: $GOPATH\033[0m"
-EOF
+        # 自动加载环境变量
+        source ~/.profile
         
-        chmod +x $TEMP_SCRIPT
+        color_echo $green "Go 环境已激活"
+        color_echo $blue "Go版本: $(go version)"
+        color_echo $green "GOROOT: $GOROOT"
+        color_echo $green "GOPATH: $GOPATH"
         
-        color_echo $yellow "请运行以下命令以立即应用环境变量:"
-        color_echo $cyan "source ~/.profile"
-        color_echo $green "或重新打开终端会话"
-        
-        # 为当前会话自动应用环境变量
-        export PATH=$PATH:/usr/local/go/bin
-        export GOPATH=$HOME/go
-        export PATH=$PATH:$GOPATH/bin
-        
-        # 确认当前会话中的可用性
-        if command -v go >/dev/null 2>&1; then
-            color_echo $green "当前会话中Go已可用:"
-            color_echo $blue "$(go version)"
-        fi
-        
-        # 删除临时脚本
-        rm $TEMP_SCRIPT
     else
         color_echo $red "Go安装失败，请检查错误信息"
         exit 1
     fi
 }
 
-# 执行主函数
 main

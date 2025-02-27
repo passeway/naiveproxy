@@ -182,7 +182,7 @@ rm ~/go/bin/xcaddy
 ```
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://admin:passeway@example.com:443"
+  "proxy": "https://user:pass@example.com:443"
 }
 ```
 

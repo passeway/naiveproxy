@@ -122,7 +122,7 @@ sys_arch(){
 
 install_go(){
     if [[ -z $install_version ]];then
-        echo "正在获取最新版Go"
+        echo "正在获取最新版golang..."
         count=0
         while :
         do
@@ -135,7 +135,7 @@ install_go(){
             [[ ${install_version: -1} == '.' ]] && install_version=${install_version%?}
             if [[ -z $install_version ]];then
                 if [[ $count < 3 ]];then
-                    color_echo $yellow "获取go版本号超时, 正在重试"
+                    color_echo $yellow "获取go版本号超时, 正在重试..."
                 else
                     color_echo $red "\n获取go版本号失败!"
                     exit 1
@@ -145,7 +145,7 @@ install_go(){
             fi
             count=$(($count+1))
         done
-        echo "最新版Go: `color_echo $blue $install_version`"
+        echo "最新版golang: `color_echo $blue $install_version`"
     fi
     if [[ $force_mode == 0 && `command -v go` ]];then
         if [[ `go version|awk '{print $3}'|grep -Eo "[0-9.]+"` == $install_version ]];then
@@ -194,7 +194,7 @@ main(){
     setup_env
     setup_proxy
     install_updater
-    go version
+    echo -e "golang `color_echo $blue $install_version` 安装成功!"
 }
 
 main

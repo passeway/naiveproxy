@@ -65,6 +65,10 @@ setup_env(){
         echo 'export PATH=$PATH:/usr/local/go/bin' >> $profile_path
     fi
 
+    # 设置 GO111MODULE 环境变量
+    echo "export GO111MODULE=on" >> ~/.bashrc
+    source ~/.bashrc
+
     # 重新加载环境变量
     source $profile_path
 }

@@ -169,22 +169,7 @@ install_go(){
     rm -rf $temp_path $file_name
 }
 
-install_updater(){
-    if [[ $os == "Linux" ]];then
-        if [[ ! -e /usr/local/bin/goupdate || -z `cat /usr/local/bin/goupdate|grep '$@'` ]];then
-            echo 'source <(curl -L https://go-install.netlify.app/install.sh) $@' > /usr/local/bin/goupdate
-            chmod +x /usr/local/bin/goupdate
-        fi
-    elif [[ $os == "Darwin" ]];then
-        if [[ ! -e $HOME/go/bin/goupdate || -z `cat $HOME/go/bin/goupdate|grep '$@'` ]];then
-            cat > $HOME/go/bin/goupdate << 'EOF'
-#!/bin/zsh
-source <(curl -L https://go-install.netlify.app/install.sh) $@
-EOF
-            chmod +x $HOME/go/bin/goupdate
-        fi
-    fi
-}
+
 
 main(){
     sys_arch
@@ -192,7 +177,6 @@ main(){
     install_go
     setup_env
     setup_proxy
-    install_updater
     go version
 }
 

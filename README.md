@@ -32,10 +32,7 @@ sudo ss -tuln | grep -E ':80|:443'
 mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
-{
-  http_port 80
-}
-:443, example.com:443
+:443, example.com
 tls me@example.com
 route {
   forward_proxy {
@@ -182,7 +179,7 @@ rm ~/go/bin/xcaddy
 ```
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://user:pass@example.com:443"
+  "proxy": "https://user:pass@example.com"
 }
 ```
 

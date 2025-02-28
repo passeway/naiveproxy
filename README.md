@@ -16,7 +16,7 @@ apt-get install -y golang-go && \
 go version
 ```
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/Go.sh)
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/Go.sh)"
 ```
 编译 Caddy 文件
 ```

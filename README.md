@@ -126,9 +126,21 @@ systemctl reload caddy
 ```
 systemctl stop caddy
 ```
+查看 Caddy 版本
+```
+caddy version
+```
 查看 Caddy 日志
 ```
 journalctl -u caddy --no-pager
+```
+压缩 Caddy 内核
+```
+tar -cvzf caddy-arm64-v2.9.1.tar.gz -C /usr/bin caddy
+```
+解压 Caddy 内核
+```
+tar -xvzf caddy-arm64-v2.9.1.tar.gz -C /usr/bin
 ```
 重载 Caddy 配置
 ```

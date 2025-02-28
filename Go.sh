@@ -65,7 +65,7 @@ setup_env(){
 
     # 设置 GOPATH 为默认路径
     GOPATH="/root/go"
-    echo "GOPATH值为: `color_echo $blue $GOPATH`"
+    echo "GOPATH值为 `color_echo $blue $GOPATH`"
     echo "export GOPATH=$GOPATH" >> $profile_path
     echo 'export PATH=$PATH:$GOPATH/bin' >> $profile_path
     mkdir -p $GOPATH
@@ -144,7 +144,7 @@ install_go(){
             fi
             count=$(($count+1))
         done
-        echo "go version: $(color_echo $blue "go$install_version")"
+        echo "go version $(color_echo $blue "go$install_version")"
     fi
     if [[ $force_mode == 0 && `command -v go` ]];then
         if [[ `go version|awk '{print $3}'|grep -Eo "[0-9.]+"` == $install_version ]];then

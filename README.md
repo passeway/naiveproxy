@@ -15,6 +15,11 @@ apt-get update && \
 apt-get install -y golang-go && \
 go version
 ```
+卸载 Go 语言
+```
+sudo apt-get remove --purge -y golang-go && sudo apt-get autoremove -y && \
+sudo apt-get remove --purge -y golang*
+```
 ```
 source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/Go.sh)
 ```

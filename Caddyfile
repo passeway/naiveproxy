@@ -1,14 +1,14 @@
 {
-	order forward_proxy before file_server  # 定义 forward_proxy 优先级在 file_server 之前
+	order forward_proxy before file_server 
 	http_port 8880 # 设置 HTTP 端口为 8880
 }
 
 :8080, example.com:8080 {
-	tls me@gmail.com # 使用 me@gmail.com 的 TLS 证书
+	tls me@gmail.com 
 
 	route {
 		forward_proxy {
-			basic_auth admin passeway # 使用基本身份认证，用户名为 admin，密码为 passeway
+			basic_auth admin passeway 
 			hide_ip # 隐藏客户端 IP 地址
 			hide_via # 隐藏代理 Via 头
 			probe_resistance # 启用探测抗性功能，防止代理检测
@@ -29,16 +29,17 @@ example.com {
 	}
 }
 
+
 # 代理本地 web 服务
 {
-	order forward_proxy before reverse_proxy # 定义 forward_proxy 优先级在 reverse_proxy 之前
+	order forward_proxy before reverse_proxy # 
 }
 
 :443 example.com {
-	tls me@gmail.com # 使用 me@gmail.com 的 TLS 证书
+	tls me@gmail.com 
 	route {
 		forward_proxy {
-			basic_auth admin passeway # 使用基本身份认证，用户名为 admin，密码为 passeway
+			basic_auth admin passeway 
 			hide_ip # 隐藏客户端 IP 地址
 			hide_via # 隐藏代理 Via 头
 			probe_resistance # 启用探测抗性功能，防止代理检测
@@ -54,5 +55,17 @@ example.com {
 
 	file_server {
 		root /var/www/html
+	}
+}
+
+
+
+#代理加密DNS服务
+dns.passeway.de {
+	reverse_proxy /dns-query https://dns.google {
+		header_up Host {upstream_hostport}
+	}
+	reverse_proxy https://bing.com {
+		header_up Host {upstream_hostport}
 	}
 }

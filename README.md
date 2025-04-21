@@ -21,7 +21,7 @@ sudo apt-get remove --purge -y golang-go && sudo apt-get autoremove -y && \
 sudo apt-get remove --purge -y golang*
 ```
 ```
-source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/Go.sh)
+source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/go.sh)
 ```
 编译 Caddy 文件
 ```

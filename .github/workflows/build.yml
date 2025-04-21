@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # 给予写入仓库内容的权限
+  contents: write
 
 jobs:
   build:
@@ -18,18 +18,14 @@ jobs:
     - name: Set up Go (latest)
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.2'
+        go-version: 'stable'
     
     - name: Initialize Go module
       run: |
-        # 创建一个临时构建目录
         mkdir -p build
         cd build
-        # 初始化一个Go模块
         go mod init caddy-build
-        # 添加caddy作为依赖以生成go.sum
         go get github.com/caddyserver/caddy/v2@latest
-        # 返回主目录
         cd ..
     
     - name: Install dependencies

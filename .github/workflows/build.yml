@@ -57,9 +57,7 @@ jobs:
         tag_name: ${{ github.ref_name }}
         name: "Release ${{ github.ref_name }}"
         body: |
-          ✅ 自动构建 Caddy（带 naive 插件）版本：${{ env.version }}
-          - 支持架构：amd64、arm64
-          - 使用 Go 1.24.2 构建
+          Caddy版本：${{ env.version }}（带 naive 插件）
         files: |
           caddy-amd64-${{ env.version }}.tar.gz
           caddy-arm64-${{ env.version }}.tar.gz

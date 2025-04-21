@@ -137,7 +137,7 @@ install_go(){
             fi
             count=$(($count+1))
         done
-        echo "Go version: $(color_echo $blue "go$install_version")"
+        echo "Go version $(color_echo $blue "go$install_version")"
     fi
 
     if [[ $force_mode == 0 && `command -v go` ]]; then

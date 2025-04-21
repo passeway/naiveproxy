@@ -5,7 +5,6 @@ on:
       - 'v*'
   workflow_dispatch:
 
-# 添加权限设置
 permissions:
   contents: write  # 给予写入仓库内容的权限
 
@@ -15,25 +14,41 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+    
     - name: Set up Go (latest)
       uses: actions/setup-go@v5
       with:
         go-version: '1.24.2'
-        cache: false # 禁用缓存，因为没有 go.sum 文件
+    
+    - name: Initialize Go module
+      run: |
+        # 创建一个临时构建目录
+        mkdir -p build
+        cd build
+        # 初始化一个Go模块
+        go mod init caddy-build
+        # 添加caddy作为依赖以生成go.sum
+        go get github.com/caddyserver/caddy/v2@latest
+        # 返回主目录
+        cd ..
+    
     - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y jq curl git
+    
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$HOME/go/bin" >> $GITHUB_PATH
+    
     - name: Get latest Caddy version
       id: get_version
       run: |
         VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         echo "✅ Latest Caddy version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_ENV
+    
     - name: Build amd64
       run: |
         ARCH=amd64
@@ -41,6 +56,7 @@ jobs:
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+    
     - name: Build arm64
       env:
         GOOS: linux
@@ -51,6 +67,7 @@ jobs:
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+    
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:

@@ -141,11 +141,11 @@ journalctl -u caddy --no-pager
 ```
 压缩 Caddy 内核
 ```
-tar -cvzf caddy-arm64-v2.9.1.tar.gz -C /usr/bin caddy
+bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/pack.sh)
 ```
 解压 Caddy 内核
 ```
-tar -xvzf caddy-arm64-v2.9.1.tar.gz -C /usr/bin
+bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
 ```
 重载 Caddy 配置
 ```

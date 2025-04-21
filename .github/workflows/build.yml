@@ -56,7 +56,7 @@ jobs:
       with:
         tag_name: ${{ github.ref_name }}
         body: |
-          Caddy版本：${{ env.version }}（带 naive 插件）
+          ### caddy-forwardproxy-naïve
         files: |
           caddy-amd64-${{ env.version }}.tar.gz
           caddy-arm64-${{ env.version }}.tar.gz

@@ -304,7 +304,7 @@ update_naiveproxy() {
   fi
 
   # 安装 Go 语言
-  source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/Go.sh)
+  source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/go.sh)
 
   # 编译带有 forwardproxy 的 Caddy 服务器
   echo "正在编译 Caddy"

@@ -1,0 +1,69 @@
+name: Build and Release Caddy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Go (latest)
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.2'
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y jq curl git
+
+    - name: Install xcaddy
+      run: |
+        go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+        echo "$HOME/go/bin" >> $GITHUB_PATH
+
+    - name: Get latest Caddy version
+      id: get_version
+      run: |
+        VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
+        echo "✅ Latest Caddy version: $VERSION"
+        echo "version=$VERSION" >> $GITHUB_ENV
+
+    - name: Build amd64
+      run: |
+        ARCH=amd64
+        xcaddy build ${{ env.version }} \
+          --output caddy-${ARCH}-${{ env.version }} \
+          --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
+        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+
+    - name: Build arm64
+      run: |
+        ARCH=arm64
+        xcaddy build ${{ env.version }} \
+          --output caddy-${ARCH}-${{ env.version }} \
+          --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive \
+          --goos=linux --goarch=arm64
+        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: "Release ${{ github.ref_name }}"
+        body: |
+          ✅ 自动构建 Caddy（带 naive 插件）版本：${{ env.version }}
+          - 支持架构：amd64、arm64
+          - 使用 Go 1.24.2 构建
+        files: |
+          caddy-amd64-${{ env.version }}.tar.gz
+          caddy-arm64-${{ env.version }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

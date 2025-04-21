@@ -55,7 +55,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
-        name: "Release ${{ github.ref_name }}"
         body: |
           Caddy版本：${{ env.version }}（带 naive 插件）
         files: |

@@ -4,6 +4,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+
+# 添加权限设置
+permissions:
+  contents: write  # 给予写入仓库内容的权限
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -58,5 +63,3 @@ jobs:
         files: |
           caddy-amd64-${{ env.version }}.tar.gz
           caddy-arm64-${{ env.version }}.tar.gz
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

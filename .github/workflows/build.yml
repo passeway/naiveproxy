@@ -22,15 +22,10 @@ jobs:
       with:
         go-version: stable
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          go-mod-${{ runner.os }}-
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y jq curl git
 
     - name: Initialize Go module
       run: |
@@ -40,10 +35,16 @@ jobs:
         go get github.com/caddyserver/caddy/v2@latest
         cd ..
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y jq curl git
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-mod-${{ runner.os }}-${{ hashFiles('build/go.sum') }}
+        restore-keys: |
+          go-mod-${{ runner.os }}-
 
     - name: Install xcaddy
       run: |

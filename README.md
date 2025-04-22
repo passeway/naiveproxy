@@ -35,7 +35,7 @@ mv caddy /usr/bin/
 
 查看80 443 端口是否占用
 ```
-sudo ss -tuln | grep -E ':80|:443'
+sudo ss -tulnp | grep -E ':80|:443'
 ```
 创建 Caddyfile 配置文件
 ```

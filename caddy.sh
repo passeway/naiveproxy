@@ -19,7 +19,6 @@ if [[ -z "$LATEST_VERSION" ]]; then
     exit 1
 fi
 
-echo "最新版本：$LATEST_VERSION"
 
 # 拼接下载地址
 FILENAME="caddy-${ARCH_TAG}-${LATEST_VERSION}.tar.gz"
@@ -33,4 +32,3 @@ chmod +x /usr/bin/caddy
 # 清理文件
 rm -f "$FILENAME"
 
-echo "Caddy 安装完成 /usr/bin/caddy"

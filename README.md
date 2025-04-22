@@ -44,6 +44,7 @@ mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 :443, example.com
 tls me@example.com
+
 route {
   forward_proxy {
     basic_auth user pass
@@ -51,7 +52,8 @@ route {
     hide_via
     probe_resistance
   }
- reverse_proxy https://demo.cloudreve.org {
+
+  reverse_proxy https://demo.cloudreve.org {
     header_up Host {upstream_hostport}
   }
 }

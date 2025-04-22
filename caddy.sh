@@ -28,6 +28,7 @@ tar -xvzf "$FILENAME" -C /usr/bin/ || { echo "❌ 解压失败"; exit 1; }
 
 # 设置权限
 chmod +x /usr/bin/caddy
+caddy version
 
 # 清理文件
 rm -f "$FILENAME"

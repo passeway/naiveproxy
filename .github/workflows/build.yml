@@ -53,9 +53,8 @@ jobs:
         ARCH=amd64
         echo "Building for $ARCH architecture"
         xcaddy build ${{ env.version }} \
-          --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy
 
     - name: Build arm64
       env:
@@ -65,9 +64,8 @@ jobs:
         ARCH=arm64
         echo "Building for $ARCH architecture"
         xcaddy build ${{ env.version }} \
-          --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
+        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy
 
     - name: Generate SHA256 checksums
       run: |

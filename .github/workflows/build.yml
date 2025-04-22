@@ -36,16 +36,6 @@ jobs:
         go get github.com/caddyserver/caddy/v2@latest
         cd ..
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: go-mod-${{ runner.os }}-${{ hashFiles('build/go.sum') }}
-        restore-keys: |
-          go-mod-${{ runner.os }}-
-
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
@@ -56,10 +46,12 @@ jobs:
       run: |
         VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         echo "version=$VERSION" >> $GITHUB_ENV
+        echo "Building Caddy version: $VERSION"
 
     - name: Build amd64
       run: |
         ARCH=amd64
+        echo "Building for $ARCH architecture"
         xcaddy build ${{ env.version }} \
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
@@ -71,6 +63,7 @@ jobs:
         GOARCH: arm64
       run: |
         ARCH=arm64
+        echo "Building for $ARCH architecture"
         xcaddy build ${{ env.version }} \
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive

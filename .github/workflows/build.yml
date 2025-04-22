@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build:
+    name: Build and Release Caddy
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -20,6 +21,16 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: stable
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: go-mod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          go-mod-${{ runner.os }}-
 
     - name: Initialize Go module
       run: |

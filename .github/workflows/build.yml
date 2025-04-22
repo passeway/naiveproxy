@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   build:
@@ -17,45 +16,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-
-    - name: Update Workflow Run Title
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RUN_ID: ${{ github.run_id }}
-        CUSTOM_TITLE: 'Automated Caddy Deployment'
-      run: |
-        echo "Debug: CUSTOM_TITLE is set to $CUSTOM_TITLE"
-        echo "Debug: RUN_ID is $RUN_ID"
-        echo "Debug: Repository is ${{ github.repository }}"
-        echo "Debug: Full API URL is https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID"
-        echo "Debug: Sending API request to update title..."
-        for attempt in {1..3}; do
-          echo "Attempt $attempt of 3..."
-          response=$(curl -X PATCH \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID \
-            -d "{\"name\": \"$CUSTOM_TITLE\"}" \
-            -w "%{http_code}" \
-            -o response.json \
-            -s)
-          echo "HTTP Status: $response"
-          if [ "$response" -eq 200 ]; then
-            echo "Title updated successfully!"
-            break
-          else
-            echo "Failed to update title, response:"
-            cat response.json
-            if [ $attempt -lt 3 ]; then
-              wait_time=$((attempt * 3))  # 动态等待：第一次 3 秒，第二次 6 秒
-              echo "Retrying in $wait_time seconds..."
-              sleep $wait_time
-            else
-              echo "Max retries reached, giving up."
-            fi
-          fi
-        done
-        echo "Debug: API request completed."
 
     - name: Set up Go
       uses: actions/setup-go@v5

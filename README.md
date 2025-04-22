@@ -141,14 +141,6 @@ caddy version
 ```
 journalctl -u caddy --no-pager
 ```
-压缩 Caddy 内核
-```
-bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/pack.sh)
-```
-解压 Caddy 内核
-```
-bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
-```
 重载 Caddy 配置
 ```
 caddy reload --config /etc/caddy/Caddyfile

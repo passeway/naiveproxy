@@ -21,6 +21,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: stable
+        cache: false
 
     - name: Install dependencies
       run: |
@@ -29,7 +30,6 @@ jobs:
 
     - name: Initialize Go module
       run: |
-        rm -rf build
         mkdir -p build
         cd build
         go mod init caddy-build

@@ -1,4 +1,5 @@
 name: Build and Release Caddy
+
 on:
   push:
     tags:
@@ -14,12 +15,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-    
-    - name: Set up Go (latest)
+
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: 'stable'
-    
+        go-version: stable
+
     - name: Initialize Go module
       run: |
         mkdir -p build
@@ -27,24 +28,23 @@ jobs:
         go mod init caddy-build
         go get github.com/caddyserver/caddy/v2@latest
         cd ..
-    
+
     - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y jq curl git
-    
+
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$HOME/go/bin" >> $GITHUB_PATH
-    
+
     - name: Get latest Caddy version
       id: get_version
       run: |
         VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
-        echo "✅ Latest Caddy version: $VERSION"
         echo "version=$VERSION" >> $GITHUB_ENV
-    
+
     - name: Build amd64
       run: |
         ARCH=amd64
@@ -52,7 +52,7 @@ jobs:
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
-    
+
     - name: Build arm64
       env:
         GOOS: linux
@@ -63,7 +63,12 @@ jobs:
           --output caddy-${ARCH}-${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy-${ARCH}-${{ env.version }}
-    
+
+    - name: Generate SHA256 checksums
+      run: |
+        sha256sum caddy-amd64-${{ env.version }}.tar.gz > caddy-amd64-${{ env.version }}.sha256
+        sha256sum caddy-arm64-${{ env.version }}.tar.gz > caddy-arm64-${{ env.version }}.sha256
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -73,3 +78,5 @@ jobs:
         files: |
           caddy-amd64-${{ env.version }}.tar.gz
           caddy-arm64-${{ env.version }}.tar.gz
+          caddy-amd64-${{ env.version }}.sha256
+          caddy-arm64-${{ env.version }}.sha256

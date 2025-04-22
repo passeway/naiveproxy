@@ -114,39 +114,8 @@ install_naiveproxy() {
     return 1
   fi
 
-  # 安装 Go 语言
-  source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/go.sh)
-
-  # 编译带有 forwardproxy 的 Caddy 服务器
-  echo "正在编译 Caddy"
-  if ! go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest; then
-    echo "无法安装 xcaddy。"
-    return 1
-  fi
-
-  if ! ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive; then
-    echo "无法编译带有 forwardproxy 的 Caddy"
-    return 1
-  fi
-
-  # 检查 Caddy 是否成功编译
-  if [[ ! -f /root/caddy ]]; then
-    echo "Caddy 编译失败，/root/caddy 文件不存在"
-    return 1
-  fi
-
-  # 移动 Caddy 到 /usr/bin/ 并确保具有执行权限
-  if ! mv /root/caddy /usr/bin/; then
-    echo "无法将 Caddy 移动到 /usr/bin/"
-    return 1
-  fi
-
-  if ! chmod +x /usr/bin/caddy; then
-    echo "无法为 Caddy 设置执行权限"
-    return 1
-  else
-    echo "Caddy成功移动到 /usr/bin"
-  fi
+  # 下载 Caddy 内核
+  bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
 
 
   # 创建并配置 Caddyfile

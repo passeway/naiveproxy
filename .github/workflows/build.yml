@@ -29,12 +29,12 @@ jobs:
 
     - name: Initialize Go module
       run: |
+        rm -rf build
         mkdir -p build
         cd build
         go mod init caddy-build
         go get github.com/caddyserver/caddy/v2@latest
         cd ..
-
 
     - name: Cache Go modules
       uses: actions/cache@v3

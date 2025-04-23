@@ -41,8 +41,14 @@ jobs:
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-        echo "$HOME/go/bin" >> $GITHUB_PATH
-        echo "export PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
+        XCADDY_PATH=$(go env GOPATH)/bin/xcaddy
+        echo "xcaddy path: $XCADDY_PATH"
+        if [ ! -f "$XCADDY_PATH" ]; then
+          echo "Error: xcaddy binary not found at $XCADDY_PATH"
+          exit 1
+        fi
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        echo "export PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
     - name: Get latest Caddy version
       id: get_version
@@ -58,7 +64,7 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       run: |
         echo "Building for $GOARCH architecture"
-        ~/.go/bin/xcaddy build ${{ env.version }} \
+        $(go env GOPATH)/bin/xcaddy build ${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         if [ ! -f caddy ]; then
           echo "Error: Caddy binary not found"

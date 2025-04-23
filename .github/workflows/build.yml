@@ -13,9 +13,19 @@ jobs:
   build:
     name: Build and Release Caddy
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            goarch: amd64
+          - arch: arm64
+            goarch: arm64
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -28,58 +38,45 @@ jobs:
         sudo apt update
         sudo apt install -y jq curl git
 
-    - name: Initialize Go module
-      run: |
-        mkdir -p build
-        cd build
-        go mod init caddy-build
-        go get github.com/caddyserver/caddy/v2@latest
-        cd ..
-
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$HOME/go/bin" >> $GITHUB_PATH
+        echo "export PATH=$PATH:$HOME/go/bin" >> $GITHUB_ENV
 
     - name: Get latest Caddy version
       id: get_version
       run: |
         VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         echo "version=$VERSION" >> $GITHUB_ENV
+        echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
         echo "Building Caddy version: $VERSION"
 
-    - name: Build amd64
-      run: |
-        ARCH=amd64
-        echo "Building for $ARCH architecture"
-        xcaddy build ${{ env.version }} \
-          --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy
-
-    - name: Build arm64
+    - name: Build Caddy (${{ matrix.arch }})
       env:
         GOOS: linux
-        GOARCH: arm64
+        GOARCH: ${{ matrix.goarch }}
       run: |
-        ARCH=arm64
-        echo "Building for $ARCH architecture"
-        xcaddy build ${{ env.version }} \
+        echo "Building for $GOARCH architecture"
+        ~/.go/bin/xcaddy build ${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        tar -czvf caddy-${ARCH}-${{ env.version }}.tar.gz caddy
+        if [ ! -f caddy ]; then
+          echo "Error: Caddy binary not found"
+          exit 1
+        fi
+        tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
 
-    - name: Generate SHA256 checksums
+    - name: Generate checksum
       run: |
-        sha256sum caddy-amd64-${{ env.version }}.tar.gz > caddy-amd64-${{ env.version }}.sha256
-        sha256sum caddy-arm64-${{ env.version }}.tar.gz > caddy-arm64-${{ env.version }}.sha256
+        sha256sum caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz > caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.sha256
 
-    - name: Create GitHub Release
+    - name: Upload assets to release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
         body: |
           ### caddy-forwardproxy-naïve
         files: |
-          caddy-amd64-${{ env.version }}.tar.gz
-          caddy-arm64-${{ env.version }}.tar.gz
-          caddy-amd64-${{ env.version }}.sha256
-          caddy-arm64-${{ env.version }}.sha256
+          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz
+          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.sha256

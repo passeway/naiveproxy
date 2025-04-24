@@ -32,11 +32,6 @@ jobs:
         go-version: stable
         cache: false
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y curl git
-
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest

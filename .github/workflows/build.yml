@@ -58,10 +58,7 @@ jobs:
         echo "Building for $GOARCH architecture"
         xcaddy build ${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        if [ ! -f caddy ]; then
-          echo "Error: Caddy binary not found"
-          exit 1
-        fi
+        test -f caddy && chmod +x caddy || (echo "Caddy build failed" && exit 1)
         tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
 
     - name: Generate checksum

@@ -1,15 +1,56 @@
-name: Build and Release Caddy
+name: Daily Check and Build Caddy
 
 on:
-  push:
-    tags:
-      - 'v*'
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  check-and-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_tag: ${{ steps.set-tag.outputs.latest_tag }}
+      clean_tag: ${{ steps.set-tag.outputs.clean_tag }}
+      should_build: ${{ steps.set-tag.outputs.should_build }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Get latest Caddy version
+      id: get-latest
+      run: |
+        latest=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
+        echo "latest_tag=$latest" >> $GITHUB_OUTPUT
+        echo "clean_tag=${latest#v}" >> $GITHUB_OUTPUT
+
+    - name: Get current latest tag in this repo
+      id: get-current
+      run: |
+        current=$(git tag | sort -V | tail -n1)
+        echo "current_tag=$current" >> $GITHUB_OUTPUT
+
+    - name: Compare and tag if needed
+      id: set-tag
+      run: |
+        if [ "${{ steps.get-latest.outputs.latest_tag }}" != "${{ steps.get-current.outputs.current_tag }}" ]; then
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git tag "${{ steps.get-latest.outputs.latest_tag }}"
+          git push origin "${{ steps.get-latest.outputs.latest_tag }}"
+          echo "latest_tag=${{ steps.get-latest.outputs.latest_tag }}" >> $GITHUB_OUTPUT
+          echo "clean_tag=${{ steps.get-latest.outputs.clean_tag }}" >> $GITHUB_OUTPUT
+          echo "should_build=true" >> $GITHUB_OUTPUT
+        else
+          echo "should_build=false" >> $GITHUB_OUTPUT
+        fi
+
   build:
+    needs: check-and-tag
+    if: needs.check-and-tag.outputs.should_build == 'true'
     runs-on: ubuntu-latest
 
     strategy:
@@ -36,36 +77,24 @@ jobs:
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-    - name: Set version from tag
-      id: get_version
-      run: |
-        VERSION=${{ github.ref_name }}
-        echo "version=$VERSION" >> $GITHUB_ENV
-        echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
-        echo "Building Caddy version: $VERSION"
-
     - name: Build Caddy (${{ matrix.arch }})
       env:
         GOOS: linux
         GOARCH: ${{ matrix.goarch }}
       run: |
-        echo "Building for $GOARCH architecture"
-        xcaddy build ${{ env.version }} \
+        xcaddy build ${{ needs.check-and-tag.outputs.latest_tag }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        test -f caddy && chmod +x caddy || (echo "Caddy build failed" && exit 1)
-        tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
-
-    - name: Generate checksum
-      run: |
-        sha256sum caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz > caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.sha256
+        chmod +x caddy
+        tar -czvf caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.tar.gz caddy
+        sha256sum caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.tar.gz > caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.sha256
 
     - name: Upload assets to release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref_name }}
-        name: ${{ github.ref_name }}
+        tag_name: ${{ needs.check-and-tag.outputs.latest_tag }}
+        name: ${{ needs.check-and-tag.outputs.latest_tag }}
         body: |
           ### caddy-forwardproxy-naïve
         files: |
-          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz
-          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.sha256
+          caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.tar.gz
+          caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.sha256

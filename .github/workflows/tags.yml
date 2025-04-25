@@ -1,45 +1,48 @@
-name: Check Caddy Upstream Tag
+name: Daily Check and Build Caddy
 
 on:
   schedule:
-    - cron: '0 1 * * *'
-  workflow_dispatch:
+    - cron: '0 1 * * *'  # 每天 UTC+1 点执行
+  workflow_dispatch:     # 手动触发
 
 permissions:
   contents: write
 
 jobs:
-  check:
+  check-and-tag:
     runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.set-tag.outputs.new_tag }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Get latest upstream tag from Caddy
-        id: get_latest
-        run: |
-          latest_tag=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
-          echo "Latest tag from upstream: $latest_tag"
-          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+    - name: Get latest Caddy version
+      id: latest
+      run: |
+        latest=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
+        echo "latest_tag=$latest" >> $GITHUB_OUTPUT
 
-      - name: Get existing tags in this repo
-        id: check_exists
-        run: |
-          tag="${{ steps.get_latest.outputs.tag }}"
-          exists=$(git tag -l "$tag")
-          if [ -n "$exists" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+    - name: Get current latest tag in this repo
+      id: current
+      run: |
+        current=$(git tag | sort -V | tail -n1)
+        echo "current_tag=$current" >> $GITHUB_OUTPUT
 
-      - name: Create tag if not exists
-        if: steps.check_exists.outputs.exists == 'false'
-        run: |
-          tag="${{ steps.get_latest.outputs.tag }}"
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@users.noreply.github.com"
-          git fetch origin
-          git tag "$tag"
-          git push origin "$tag"
+    - name: Set new tag if needed
+      id: set-tag
+      run: |
+        if [ "${{ steps.latest.outputs.latest_tag }}" != "${{ steps.current.outputs.current_tag }}" ]; then
+          echo "new_tag=${{ steps.latest.outputs.latest_tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "new_tag=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create and push tag
+      if: steps.set-tag.outputs.new_tag != ''
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@users.noreply.github.com
+        git tag ${{ steps.set-tag.outputs.new_tag }}
+        git push origin ${{ steps.set-tag.outputs.new_tag }}

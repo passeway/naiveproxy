@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   build:
-    name: Build and Release Caddy
     runs-on: ubuntu-latest
 
     strategy:

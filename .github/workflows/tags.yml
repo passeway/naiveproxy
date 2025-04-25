@@ -5,40 +5,41 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get latest upstream tag
-        id: get_tag
+      - name: Get latest upstream tag from Caddy
+        id: get_latest
         run: |
           latest_tag=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
-          echo "Latest Caddy tag: $latest_tag"
-          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "Latest tag from upstream: $latest_tag"
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
 
       - name: Get existing tags in this repo
         id: check_exists
         run: |
-          tag=${{ steps.get_tag.outputs.latest_tag }}
-          if git ls-remote --tags origin | grep -q "refs/tags/$tag"; then
-            echo "Tag already exists."
+          tag="${{ steps.get_latest.outputs.tag }}"
+          exists=$(git tag -l "$tag")
+          if [ -n "$exists" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "New tag to create."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create tag if not exists
         if: steps.check_exists.outputs.exists == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag=${{ steps.get_tag.outputs.latest_tag }}
+          tag="${{ steps.get_latest.outputs.tag }}"
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@users.noreply.github.com"
           git fetch origin
-          git tag $tag
-          git push origin $tag
+          git tag "$tag"
+          git push origin "$tag"

@@ -90,7 +90,7 @@ jobs:
         echo "Building for $GOARCH"
         xcaddy build ${{ needs.check-and-tag.outputs.latest_tag }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        chmod +x caddy
+        test -f caddy && chmod +x caddy || (echo "Caddy build failed" && exit 1)
         tar -czvf caddy_${{ needs.check-and-tag.outputs.clean_tag }}_linux_${{ matrix.arch }}.tar.gz caddy
 
     - name: Generate checksum

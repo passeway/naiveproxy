@@ -9,76 +9,93 @@ permissions:
   contents: write
 
 jobs:
-  c:
+  check:
     runs-on: ubuntu-latest
     outputs:
-      o: ${{ steps.s.outputs.o }}
-      t: ${{ steps.s.outputs.t }}
-      v: ${{ steps.s.outputs.v }}
+      build: ${{ steps.tag.outputs.build }}
+      tag: ${{ steps.tag.outputs.tag }}
+      ver: ${{ steps.tag.outputs.ver }}
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0
-    - id: l
-      run: echo "t=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
-    - id: c
+        fetch-depth: 0  # Fetch all history and tags
+    
+    - id: latest
+      name: Get latest Caddy version
+      run: echo "tag=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+    
+    - id: current
+      name: Get latest tag from current repository
       run: |
         if git tag | grep -q .; then
-          echo "t=$(git tag | sort -V | tail -n1)"
+          echo "tag=$(git tag | sort -V | tail -n1)" >> $GITHUB_OUTPUT
         else
-          echo "t=none"
-        fi >> $GITHUB_OUTPUT
-    - id: s
+          echo "tag=none" >> $GITHUB_OUTPUT
+        fi
+    
+    - id: tag
+      name: Compare and create tag
       run: |
-        l="${{ steps.l.outputs.t }}"
-        c="${{ steps.c.outputs.t }}"
-        echo "Latest: $l"
-        echo "Current: $c"
+        latest="${{ steps.latest.outputs.tag }}"
+        current="${{ steps.current.outputs.tag }}"
+        echo "Latest version: $latest"
+        echo "Current version: $current"
         
-        if [ "$l" != "$c" ]; then
-          if ! git ls-remote --tags origin | grep -q "refs/tags/$l"; then
+        if [ "$latest" != "$current" ]; then
+          if ! git ls-remote --tags origin | grep -q "refs/tags/$latest"; then
             git config user.name github-actions
             git config user.email github-actions@users.noreply.github.com
-            git tag "$l"
-            git push origin "$l"
+            git tag "$latest"
+            git push origin "$latest"
           else
-            echo "Tag $l already exists remotely, skipping tag creation"
+            echo "Tag $latest already exists, skipping creation"
           fi
-          echo "t=$l" >> $GITHUB_OUTPUT
-          echo "v=${l#v}" >> $GITHUB_OUTPUT
-          echo "o=1" >> $GITHUB_OUTPUT
+          echo "tag=$latest" >> $GITHUB_OUTPUT
+          echo "ver=${latest#v}" >> $GITHUB_OUTPUT
+          echo "build=true" >> $GITHUB_OUTPUT
         else
-          echo "o=0" >> $GITHUB_OUTPUT
+          echo "Same version, no need to build"
+          echo "build=false" >> $GITHUB_OUTPUT
         fi
 
-  b:
-    needs: c
-    if: needs.c.outputs.o == '1'
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        a: [amd64, arm64]
+        arch: [amd64, arm64]
+    
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-go@v5
+    
+    - name: Set up Go environment
+      uses: actions/setup-go@v5
       with:
         go-version: stable
         cache: false
-    - run: |
+    
+    - name: Install xcaddy
+      run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-    - run: |
-        GOOS=linux GOARCH=${{ matrix.a }} xcaddy build ${{ needs.c.outputs.t }} \
+    
+    - name: Build Caddy (${{ matrix.arch }})
+      run: |
+        echo "Building for ${{ matrix.arch }}"
+        GOOS=linux GOARCH=${{ matrix.arch }} xcaddy build ${{ needs.check.outputs.tag }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         test -f caddy && chmod +x caddy || (echo "Caddy build failed" && exit 1)
-        tar -czvf caddy_${{ needs.c.outputs.v }}_linux_${{ matrix.a }}.tar.gz caddy
-        sha256sum caddy_${{ needs.c.outputs.v }}_linux_${{ matrix.a }}.tar.gz > caddy_${{ needs.c.outputs.v }}_linux_${{ matrix.a }}.sha256
-    - uses: softprops/action-gh-release@v2
+        tar -czvf caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.tar.gz caddy
+        sha256sum caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.tar.gz > caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.sha256
+    
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ needs.c.outputs.t }}
-        name: ${{ needs.c.outputs.t }}
+        tag_name: ${{ needs.check.outputs.tag }}
+        name: ${{ needs.check.outputs.tag }}
         body: |
-          ### caddy-forwardproxy-naïve
+          ### Caddy with forwardproxy-naïve
         files: |
-          caddy_${{ needs.c.outputs.v }}_linux_${{ matrix.a }}.tar.gz
-          caddy_${{ needs.c.outputs.v }}_linux_${{ matrix.a }}.sha256
+          caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.tar.gz
+          caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.sha256

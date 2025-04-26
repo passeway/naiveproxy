@@ -18,7 +18,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Fetch all history and tags
+        fetch-depth: 0
     
     - id: latest
       name: Get latest Caddy version

@@ -12,7 +12,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      build: ${{ steps.tag.outputs.build }}
+      bui: ${{ steps.tag.outputs.bui }}
       tag: ${{ steps.tag.outputs.tag }}
       ver: ${{ steps.tag.outputs.ver }}
     steps:
@@ -52,15 +52,15 @@ jobs:
           fi
           echo "tag=$latest" >> $GITHUB_OUTPUT
           echo "ver=${latest#v}" >> $GITHUB_OUTPUT
-          echo "build=true" >> $GITHUB_OUTPUT
+          echo "bui=true" >> $GITHUB_OUTPUT
         else
           echo "Same version, no need to build"
-          echo "build=false" >> $GITHUB_OUTPUT
+          echo "bui=false" >> $GITHUB_OUTPUT
         fi
 
   build:
     needs: check
-    if: needs.check.outputs.build == 'true'
+    if: needs.check.outputs.bui == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:

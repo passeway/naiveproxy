@@ -1,0 +1,12 @@
+# Go 构建产物
+/caddy
+*.tar.gz
+*.sha256
+
+# 编译缓存
+/bin/
+/pkg/
+
+# 临时文件
+*.log
+*.tmp

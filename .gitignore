@@ -1,12 +1,35 @@
-# Go 构建产物
-/caddy
+# Caddy 构建产物
+caddy
 *.tar.gz
+*.zip
 *.sha256
+*.sha512
 
-# 编译缓存
-/bin/
-/pkg/
+# Go 编译缓存
+bin/
+dist/
+build/
+*.exe
 
-# 临时文件
+# Go module 相关
+vendor/
+
+# 依赖缓存
+go.sum
+go.mod
+
+# 编辑器和系统文件
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
 *.log
-*.tmp
+
+# GitHub Actions 
+*.tool-versions
+*.bak
+
+# 其他自定义文件
+.env
+*.old

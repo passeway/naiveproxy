@@ -25,7 +25,7 @@ jobs:
       run: echo "tag=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
     
     - id: current
-      name: Get latest tag from current repository
+      name: Get latest Tags version
       run: |
         if git tag | grep -q .; then
           echo "tag=$(git tag | sort -V | tail -n1)" >> $GITHUB_OUTPUT

@@ -57,10 +57,10 @@ check_ports() {
       pids=$(echo "$ports_info" | grep -oP 'pid=\K[0-9]+' | sort -u)
       if [[ -n "$pids" ]]; then
         echo "$pids" | xargs -r kill -9
-        echo "已结束占用进程"
+        echo "已结束 80|443 占用进程"
         sleep 1
       else
-        echo "未结束占用进程"
+        echo "未结束 80|443 占用进程"
         exit 1
       fi
     else

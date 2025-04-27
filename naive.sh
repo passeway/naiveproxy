@@ -317,8 +317,6 @@ uninstall_naiveproxy() {
   rm /etc/systemd/system/caddy.service
   systemctl daemon-reload
 
-  # 删除 Caddy 编译工具 xcaddy
-  rm ~/go/bin/xcaddy
 
   echo "NaïveProxy 卸载成功"
 }

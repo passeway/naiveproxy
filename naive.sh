@@ -50,7 +50,6 @@ check_ports() {
     echo "80 和 443 端口未被占用"
     sleep 1
   else
-    echo "检测到以下端口被占用："
     echo "$ports_info"
     read -rp "是否结束占用端口的进程？按 Y 确认，其他键退出 [Y/n]: " yn
     yn=${yn:-Y}  # 如果用户直接回车，默认赋值为 Y

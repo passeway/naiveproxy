@@ -76,12 +76,10 @@ jobs:
     
     - name: Summary of check task
       run: |
-        echo "=============== CHECK TASK SUMMARY ==============="
         echo "Timestamp: $(date -u)"
         echo "Latest Caddy version: ${{ steps.latest.outputs.tag }}"
         echo "Current repo version: ${{ steps.current.outputs.tag }}"
         echo "Build required: ${{ steps.tag.outputs.bui }}"
-        echo "=================================================="
 
   build:
     needs: check

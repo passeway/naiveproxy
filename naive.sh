@@ -40,21 +40,22 @@ check_naiveproxy_running() {
 
 # 检查 80 和 443 端口
 check_ports() {
-  echo "正在检测 80 和 443 端口是否被占用"
+  echo "检测 80 和 443 是否被占用"
   sleep 1
 
   # 查找占用 80 或 443 的进程
   ports_info=$(ss -ltnp | awk '$4 ~ /:(80|443)$/')
 
   if [[ -z "$ports_info" ]]; then
+    echo "80 和 443 端口未被占用"
     sleep 1
   else
     echo "检测到以下端口被占用："
     echo "$ports_info"
-    read -rp "是否结束占用这些端口的进程？按 Y 确认，其他键退出 [Y/N]: " yn
-    if [[ $yn =~ ^[Yy]$ ]]; then
-      # 提取所有相关进程的 PID（去重）
-      pids=$(echo "$ports_info" | sed -nE 's/.*pid=([0-9]+),.*/\1/p' | sort -u)
+    read -rp "是否结束占用端口的进程？按 Y 确认，其他键退出 [Y/n]: " yn
+    yn=${yn:-Y}  # 如果用户直接回车，默认赋值为 Y
+    if [[ "$yn" =~ ^[Yy]$ ]]; then
+      pids=$(echo "$ports_info" | grep -oP 'pid=\K[0-9]+' | sort -u)
       if [[ -n "$pids" ]]; then
         echo "$pids" | xargs -r kill -9
         echo "已结束占用进程"
@@ -64,11 +65,12 @@ check_ports() {
         exit 1
       fi
     else
-      echo "已取消"
+      echo "操作已取消"
       exit 1
     fi
   fi
 }
+
 
 
 

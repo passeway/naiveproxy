@@ -37,27 +37,40 @@ check_naiveproxy_running() {
   fi
 }
 
-# 检查 80 端口
-check_80() {
-  echo "检测 80 端口是否占用"
+
+# 检查 80 和 443 端口
+check_ports() {
+  echo "正在检测 80 和 443 端口是否被占用..."
   sleep 1
 
-  # 检查端口是否被占用
-  if [[ $(ss -tuln | awk '$5 ~ /:80$/ {print $0}' | wc -l) -eq 0 ]]; then
+  # 查找占用 80 或 443 的进程
+  ports_info=$(ss -ltnp | awk '$4 ~ /:(80|443)$/')
+
+  if [[ -z "$ports_info" ]]; then
+    echo "80 和 443 端口均未被占用。"
     sleep 1
   else
-    echo "检测到 80 端口被其他程序占用，以下为占用程序信息："
-    ss -tuln | awk '$5 ~ /:80$/ {print $0}'
-    read -rp "如需结束占用进程请按Y，按其他键则退出 [Y/N]: " yn
-    if [[ $yn =~ [Yy] ]]; then
-      # 找出占用 80 端口的进程 ID 并终止
-      ss -tulnp | awk '$5 ~ /:80$/ {print $6}' | sed 's/[^0-9]*//g' | xargs -r kill -9
-      sleep 1
+    echo "检测到以下端口被占用："
+    echo "$ports_info"
+    read -rp "是否结束占用这些端口的进程？按 Y 确认，其他键退出 [Y/N]: " yn
+    if [[ $yn =~ ^[Yy]$ ]]; then
+      # 提取所有相关进程的 PID（去重）
+      pids=$(echo "$ports_info" | sed -nE 's/.*pid=([0-9]+),.*/\1/p' | sort -u)
+      if [[ -n "$pids" ]]; then
+        echo "$pids" | xargs -r kill -9
+        echo "已结束占用进程"
+        sleep 1
+      else
+        echo "未能正确提取到进程 ID"
+        exit 1
+      fi
     else
+      echo "已取消"
       exit 1
     fi
   fi
 }
+
 
 
 # 生成一个未被占用的端口
@@ -76,9 +89,9 @@ generate_free_port() {
 install_naiveproxy() {
   echo "正在安装 NaïveProxy"
 
-  # 检查 80 端口和root权限
+  # 检查端口和root权限
   check_root
-  check_80
+  check_ports
     
   # 读取用户输入的域名
   read -p "请输入您的已解析域名: " domain_name

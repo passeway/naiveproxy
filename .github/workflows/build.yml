@@ -1,11 +1,10 @@
 name: Caddy forwardproxy-naïve Release
 
 on:
-  # 定时触发，每 10 分钟运行一次
   schedule:
-    - cron: '*/10 * * * *'
-  # 手动触发（可通过 GitHub Actions 页面手动启动）
+    - cron: '0 */12 * * *'
   workflow_dispatch:
+
 
 permissions:
   contents: write
@@ -22,7 +21,6 @@ jobs:
       run: |
         echo "Workflow triggered at $(date -u)"
         echo "Event name: $GITHUB_EVENT_NAME"
-        echo "Actor: $GITHUB_ACTOR"
     
     - uses: actions/checkout@v4
       with:
@@ -31,7 +29,6 @@ jobs:
     - id: latest
       name: Get latest Caddy version
       run: |
-        # 获取 Caddy 的最新版本号
         LATEST_TAG=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
         echo "Fetched latest Caddy version: $LATEST_TAG"
@@ -39,7 +36,6 @@ jobs:
     - id: current
       name: Get latest Tags version
       run: |
-        # 获取当前仓库的最新标签
         if git tag | grep -q .; then
           CURRENT_TAG=$(git tag | sort -V | tail -n1)
           echo "tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
@@ -57,7 +53,6 @@ jobs:
         echo "Latest version: $latest"
         echo "Current version: $current"
         
-        # 检查是否需要创建新标签
         if [ "$latest" != "$current" ]; then
           if ! git ls-remote --tags origin | grep -q "refs/tags/$latest"; then
             echo "Creating new tag: $latest"

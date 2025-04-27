@@ -24,6 +24,9 @@ source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/g
 sudo apt-get remove --purge -y golang-go && sudo apt-get autoremove -y && \
 sudo apt-get remove --purge -y golang*
 ```
+```
+sudo rm -rf /usr/local/go &&  nano ~/.profile ## 删除export PATH=$PATH:/usr/local/go/bin
+```
 
 编译 Caddy 文件
 ```

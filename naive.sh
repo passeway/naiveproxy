@@ -40,7 +40,7 @@ check_naiveproxy_running() {
 
 # 检查 80 和 443 端口
 check_ports() {
-  echo "检测 80 和 443 是否被占用"
+  echo "检测 80|443 是否被占用"
   sleep 1
 
   # 查找占用 80 或 443 的进程

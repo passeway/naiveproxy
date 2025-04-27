@@ -127,9 +127,9 @@ install_go(){
             [[ ${install_version: -1} == '.' ]] && install_version=${install_version%?}
             if [[ -z $install_version ]]; then
                 if [[ $count < 3 ]]; then
-                    color_echo $yellow "获取 Go 版本号超时, 正在重试..."
+                    color_echo $yellow "获取 Go 版本号超时"
                 else
-                    color_echo $red "\n获取 Go 版本号失败!"
+                    color_echo $red "\n获取 Go 版本号失败"
                     exit 1
                 fi
             else

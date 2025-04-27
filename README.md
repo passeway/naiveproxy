@@ -37,6 +37,10 @@ mv caddy /usr/bin/
 ```
 sudo ss -tulnp | grep -E ':80|:443'
 ```
+终止80 443 端口被占用
+```
+kill -9 PID
+```
 创建 Caddyfile 配置文件
 ```
 mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile

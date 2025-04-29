@@ -1,4 +1,4 @@
-## 终端预览
+## 项目概览
 ```mermaid
 flowchart TD
     %% Distribution Layer

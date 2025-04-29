@@ -1,7 +1,7 @@
 ## 终端预览
 
 ![preview](image.png)
-
+![preview](diagram.png)
 ## 一键脚本
 ```
 bash <(curl -fsSL naiveproxy-sigma.vercel.app)

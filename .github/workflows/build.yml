@@ -1,131 +1,73 @@
 name: Caddy forwardproxy-naïve Release
 
 on:
-  schedule:
-    - cron: '0 */12 * * *'
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-
 
 permissions:
   contents: write
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      bui: ${{ steps.tag.outputs.bui }}
-      tag: ${{ steps.tag.outputs.tag }}
-      ver: ${{ steps.tag.outputs.ver }}
-    steps:
-    - name: Log workflow trigger time
-      run: |
-        echo "Workflow triggered at $(date -u)"
-        echo "Event name: $GITHUB_EVENT_NAME"
-    
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - id: latest
-      name: Get latest Caddy version
-      run: |
-        LATEST_TAG=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
-        echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-        echo "Fetched latest Caddy version: $LATEST_TAG"
-    
-    - id: current
-      name: Get latest Tags version
-      run: |
-        if git tag | grep -q .; then
-          CURRENT_TAG=$(git tag | sort -V | tail -n1)
-          echo "tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
-          echo "Current repository tag: $CURRENT_TAG"
-        else
-          echo "tag=none" >> $GITHUB_OUTPUT
-          echo "No existing tags found in repository"
-        fi
-    
-    - id: tag
-      name: Compare and create tag
-      run: |
-        latest="${{ steps.latest.outputs.tag }}"
-        current="${{ steps.current.outputs.tag }}"
-        echo "Latest version: $latest"
-        echo "Current version: $current"
-        
-        if [ "$latest" != "$current" ]; then
-          if ! git ls-remote --tags origin | grep -q "refs/tags/$latest"; then
-            echo "Creating new tag: $latest"
-            git config user.name github-actions
-            git config user.email github-actions@users.noreply.github.com
-            git tag "$latest"
-            git push origin "$latest"
-            echo "Successfully pushed new tag: $latest"
-          else
-            echo "Tag $latest already exists, skipping creation"
-          fi
-          echo "tag=$latest" >> $GITHUB_OUTPUT
-          echo "ver=${latest#v}" >> $GITHUB_OUTPUT
-          echo "bui=true" >> $GITHUB_OUTPUT
-          echo "Build flag set to TRUE - build will proceed"
-        else
-          echo "Same version detected: $latest = $current"
-          echo "bui=false" >> $GITHUB_OUTPUT
-          echo "Build flag set to FALSE - build will be skipped"
-        fi
-    
-    - name: Summary of check task
-      run: |
-        echo "Timestamp: $(date -u)"
-        echo "Latest Caddy version: ${{ steps.latest.outputs.tag }}"
-        echo "Current repo version: ${{ steps.current.outputs.tag }}"
-        echo "Build required: ${{ steps.tag.outputs.bui }}"
-
   build:
-    needs: check
-    if: needs.check.outputs.bui == 'true'
+    name: Build and Release Caddy
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         arch: [amd64, arm64]
-    
+        include:
+          - arch: amd64
+            goarch: amd64
+          - arch: arm64
+            goarch: arm64
+
     steps:
-    - name: Log build start
-      run: echo "Starting build process for architecture ${{ matrix.arch }} at $(date -u)"
-      
-    - uses: actions/checkout@v4
-    
-    - name: Set up Go environment
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: stable
         cache: false
-    
+
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-        echo "xcaddy installed successfully"
-    
-    - name: Build Caddy (${{ matrix.arch }})
+
+    - name: Determine version
+      id: get_version
       run: |
-        echo "Building for ${{ matrix.arch }}"
-        GOOS=linux GOARCH=${{ matrix.arch }} xcaddy build ${{ needs.check.outputs.tag }} \
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          VERSION=${{ github.ref_name }}
+        else
+          VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_ENV
+        echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
+        echo "Using version: $VERSION"
+
+    - name: Build Caddy (${{ matrix.arch }})
+      env:
+        GOOS: linux
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        echo "Building for $GOARCH"
+        xcaddy build ${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
-        test -f caddy && chmod +x caddy || (echo "Caddy build failed" && exit 1)
-        echo "Build completed successfully"
-        tar -czvf caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.tar.gz caddy
-        echo "Archive created and checksum generated"
-    
-    - name: Upload to GitHub Release
+        test -f caddy && chmod +x caddy || (echo "Build failed" && exit 1)
+        tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
+
+    - name: Upload assets to release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ needs.check.outputs.tag }}
-        name: ${{ needs.check.outputs.tag }}
+        tag_name: v${{ env.clean_version }}
+        name: v${{ env.clean_version }}
         body: |
-          ### Caddy with forwardproxy-naïve
+          ### caddy-forwardproxy-naïve
         files: |
-          caddy_${{ needs.check.outputs.ver }}_linux_${{ matrix.arch }}.tar.gz
-    
-    - name: Log build completion
-      run: echo "Build and release completed for architecture ${{ matrix.arch }} at $(date -u)"
+          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz

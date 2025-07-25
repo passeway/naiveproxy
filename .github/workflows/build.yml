@@ -1,9 +1,6 @@
 name: Caddy forwardproxy-naïve Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:

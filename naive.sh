@@ -310,7 +310,6 @@ uninstall_naiveproxy() {
 
   # 删除 Caddy 的配置文件
   rm -rf /etc/caddy
-  rm -rf /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/*
 
   # 删除 systemd 服务配置
   rm /etc/systemd/system/caddy.service

@@ -1,7 +1,6 @@
 ## 终端预览
 
 ![preview](image.png)
-![preview](diagram.png)
 ## 一键脚本
 ```
 bash <(curl -fsSL naiveproxy-sigma.vercel.app)
@@ -162,7 +161,7 @@ caddy reload --config /etc/caddy/Caddyfile
 
 查看 Caddy 证书
 ```
-ls -a /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/
+sudo -u caddy ls -R /var/lib/caddy/.local/share/caddy/certificates
 ```
 ## 卸载 NaïveProxy
 ```
@@ -187,7 +186,7 @@ systemctl disable caddy
 ```
 rm /usr/bin/caddy
 rm -rf /etc/caddy
-rm -rf /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/*
+rm -rf /var/lib/caddy/.local/share/caddy/certificates/*
 ```
 删除 systemd 服务
 ```

@@ -1,16 +1,14 @@
 name: Caddy forwardproxy-naïve Release
-
 on:
   workflow_dispatch:
-
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 permissions:
   contents: write
-
 jobs:
   build:
     name: Build and Release Caddy
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         arch: [amd64, arm64]
@@ -19,22 +17,18 @@ jobs:
             goarch: amd64
           - arch: arm64
             goarch: arm64
-
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
-
+      uses: actions/checkout@v4.2.2
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v5.5.0
       with:
         go-version: stable
         cache: false
-
     - name: Install xcaddy
       run: |
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-
     - name: Determine version
       id: get_version
       run: |
@@ -43,11 +37,9 @@ jobs:
         else
           VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         fi
-
         echo "version=$VERSION" >> $GITHUB_ENV
         echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
         echo "Using version: $VERSION"
-
     - name: Build Caddy (${{ matrix.arch }})
       env:
         GOOS: linux
@@ -58,9 +50,8 @@ jobs:
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         test -f caddy && chmod +x caddy || (echo "Build failed" && exit 1)
         tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
-
     - name: Upload assets to release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v2.3.2
       with:
         tag_name: v${{ env.clean_version }}
         name: v${{ env.clean_version }}

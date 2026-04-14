@@ -7,7 +7,7 @@ permissions:
   contents: write
 jobs:
   build:
-    name: Build and Release Caddy
+    name: Build Caddy (${{ matrix.arch }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -32,11 +32,7 @@ jobs:
     - name: Determine version
       id: get_version
       run: |
-        if [[ "${{ github.event_name }}" == "push" ]]; then
-          VERSION=${{ github.ref_name }}
-        else
-          VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
-        fi
+        VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
         echo "version=$VERSION" >> $GITHUB_ENV
         echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
         echo "Using version: $VERSION"
@@ -45,11 +41,30 @@ jobs:
         GOOS: linux
         GOARCH: ${{ matrix.goarch }}
       run: |
-        echo "Building for $GOARCH"
         xcaddy build ${{ env.version }} \
           --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
         test -f caddy && chmod +x caddy || (echo "Build failed" && exit 1)
         tar -czvf caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz caddy
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: caddy-${{ matrix.arch }}
+        path: caddy_*_linux_${{ matrix.arch }}.tar.gz
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Determine version
+      run: |
+        VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r .tag_name)
+        echo "version=$VERSION" >> $GITHUB_ENV
+        echo "clean_version=${VERSION#v}" >> $GITHUB_ENV
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
     - name: Upload assets to release
       uses: softprops/action-gh-release@v2.3.2
       with:
@@ -58,4 +73,5 @@ jobs:
         body: |
           ### caddy-forwardproxy-naïve
         files: |
-          caddy_${{ env.clean_version }}_linux_${{ matrix.arch }}.tar.gz
+          caddy_${{ env.clean_version }}_linux_amd64.tar.gz
+          caddy_${{ env.clean_version }}_linux_arm64.tar.gz

@@ -24,6 +24,11 @@ sudo ss -tulnp | grep -E ':80|:443'
 ```
 kill -9 PID
 ```
+下载 index.html
+```
+sudo mkdir -p /var/www/html
+sudo wget -O /var/www/html/index.html https://raw.githubusercontent.com/passeway/naiveproxy/refs/heads/main/index.html
+```
 创建 Caddyfile 配置文件
 ```
 mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile

@@ -7,26 +7,6 @@ bash <(curl -fsSL naiveproxy-sigma.vercel.app)
 ```
 
 ## 安装 NaïveProxy
-安装 Go 语言
-```
-apt-get install -y software-properties-common && \
-add-apt-repository -y ppa:longsleep/golang-backports && \
-apt-get update && \
-apt-get install -y golang-go && \
-go version
-```
-```
-source <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/go.sh)
-```
-
-卸载 Go 语言
-```
-sudo apt-get remove --purge -y golang-go && sudo apt-get autoremove -y && \
-sudo apt-get remove --purge -y golang*
-```
-```
-sudo rm -rf /usr/local/go && nano ~/.profile ## 删除export PATH=$PATH:/usr/local/go/bin
-```
 
 编译 Caddy 文件
 ```
@@ -49,19 +29,23 @@ kill -9 PID
 mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile && nano /etc/caddy/Caddyfile
 ```
 ```
-:443, example.com
-tls me@example.com
-
-route {
+{
+  order forward_proxy before file_server
+  log {
+    exclude http.log.error # Avoid logging user activity
+  }
+}
+:443, example.com {
+  tls me@example.com
+  encode
   forward_proxy {
     basic_auth user pass
     hide_ip
     hide_via
     probe_resistance
   }
-
-  reverse_proxy https://demo.cloudreve.org {
-    header_up Host {upstream_hostport}
+  file_server {
+    root /var/www/html
   }
 }
 ```
@@ -110,13 +94,6 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 [Install]
 WantedBy=multi-user.target
-```
-启动 Naive 服务
-```
-systemctl daemon-reload && \
-systemctl enable caddy && \
-systemctl start caddy && \
-systemctl status caddy
 ```
 加载 systemd 服务
 ```

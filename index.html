@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Content Delivery Network | Node 042</title>
+    <!-- 模拟真实浏览器会加载的资源，供 Preamble 提取 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap">
+    <style>
+        :root { --main-blue: #0071e3; --bg-gray: #f5f5f7; }
+        body { font-family: 'Inter', -apple-system, sans-serif; margin: 0; background: #fff; color: #1d1d1f; }
+        .nav-bar { height: 50px; background: rgba(251,251,253,0.8); border-bottom: 1px solid #d2d2d7; }
+        .hero { max-width: 1000px; margin: 100px auto; padding: 0 40px; text-align: center; }
+        h1 { font-size: 56px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 20px; }
+        p { font-size: 24px; color: #86868b; line-height: 1.4; max-width: 700px; margin: 0 auto; }
+        .features { display: flex; justify-content: space-between; max-width: 900px; margin: 80px auto; gap: 30px; }
+        .item { flex: 1; padding: 30px; background: var(--bg-gray); border-radius: 18px; }
+        .item h3 { margin-top: 0; font-size: 21px; }
+        .item p { font-size: 16px; margin-top: 10px; }
+        footer { margin-top: 100px; padding: 40px; font-size: 12px; color: #86868b; text-align: center; border-top: 1px solid #d2d2d7; }
+        /* 隐藏的资源链接，专门给程序读取 */
+        .resource-manifest { display: none; visibility: hidden; }
+    </style>
+</head>
+<body>
+
+<div class="nav-bar"></div>
+
+<main class="hero">
+    <h1>分布式边缘分发节点</h1>
+    <p>为全球用户提供高速、稳定的静态资源调度服务。通过智能路径优化，确保数据传输的高效与合规。</p>
+    
+    <div class="features">
+        <div class="item">
+            <h3>低延迟响应</h3>
+            <p>基于全球骨干网，大幅提升静态资源加载速度。</p>
+        </div>
+        <div class="item">
+            <h3>高可用架构</h3>
+            <p>多节点冗余设计，保障 99.9% 的系统在线率。</p>
+        </div>
+        <div class="item">
+            <h3>自动化调度</h3>
+            <p>实时分析入站流量，动态分配最优资源路径。</p>
+        </div>
+    </div>
+</main>
+
+<!-- 关键点：这里的链接会被 NaiveProxy 识别并用于模拟 Chrome 预检请求 -->
+<div class="resource-manifest">
+    <a href="https://www.google.com/images/phd/user_photos/any_name.png">Resource_01</a>
+    <a href="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png">Resource_02</a>
+    <a href="https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2boKoduKmMEVuLyfMZhrib2Bg-4.woff2">Resource_03</a>
+    <a href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80">Resource_04</a>
+    <img src="https://www.google-analytics.com/analytics.js" alt="ping">
+</div>
+
+<footer>
+    &copy; 2026 Global Infrastructure Group. Node Status: Operational.
+</footer>
+
+</body>
+</html>

@@ -337,6 +337,7 @@ show_menu() {
   echo "4. 卸载 NaïveProxy 服务"
   echo "5. 更新 NaïveProxy 内核"
   echo "6. 查看 NaïveProxy 配置"
+  echo "7. 重启 NaïveProxy 服务"
   echo "0. 退出"
   echo -e "${GREEN}===========================${RESET}"
   read -p "请输入选项编号: " choice
@@ -367,6 +368,9 @@ while true; do
       ;;      
     6)
       view_naiveproxy
+      ;;
+    7)
+      systemctl reload caddy
       ;;
     0)
       echo -e "${GREEN}已退出 NaïveProxy${RESET}"

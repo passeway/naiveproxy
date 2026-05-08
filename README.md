@@ -20,10 +20,11 @@ mv caddy /usr/bin/
 ```
 sudo ss -tulnp | grep -E ':80|:443'
 ```
-终止 80/443 端口占用进程
+下载 Caddy 内核
 ```
-kill -9 PID
+bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
 ```
+
 下载 index.html
 ```
 sudo mkdir -p /var/www/html

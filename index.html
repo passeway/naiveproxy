@@ -13,6 +13,7 @@
   <link rel="dns-prefetch" href="//images.unsplash.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
 
+
   <style>
     :root {
       --text-main: #f8fafc;
@@ -229,6 +230,108 @@
       backdrop-filter: blur(22px);
     }
 
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -80px -90px auto auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(103, 232, 249, 0.22);
+      filter: blur(4px);
+    }
+
+    .panel-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-subtitle {
+      margin: 6px 0 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .metric-grid {
+      position: relative;
+      display: grid;
+      gap: 14px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .metric-label {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .metric-value {
+      margin-top: 5px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .metric-trend {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(103, 232, 249, 0.14);
+      color: rgba(207, 250, 254, 0.95);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .route-map {
+      position: relative;
+      height: 170px;
+      margin-top: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background:
+        radial-gradient(circle at 20% 55%, rgba(103, 232, 249, 0.5) 0 3px, transparent 4px),
+        radial-gradient(circle at 54% 30%, rgba(186, 230, 253, 0.75) 0 3px, transparent 4px),
+        radial-gradient(circle at 78% 68%, rgba(125, 211, 252, 0.65) 0 3px, transparent 4px),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.24), rgba(255, 255, 255, 0.09));
+      overflow: hidden;
+    }
+
+    .route-map::before,
+    .route-map::after {
+      content: "";
+      position: absolute;
+      left: 18%;
+      right: 18%;
+      height: 1px;
+      top: 52%;
+      background: linear-gradient(90deg, transparent, rgba(186, 230, 253, 0.82), transparent);
+      transform: rotate(-12deg);
+    }
+
+    .route-map::after {
+      top: 58%;
+      transform: rotate(16deg);
+      opacity: 0.55;
+    }
+
     .features {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -245,6 +348,18 @@
       box-shadow: 0 18px 52px rgba(15, 23, 42, 0.13);
     }
 
+    .item-icon {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      margin-bottom: 18px;
+      border-radius: 15px;
+      background: rgba(103, 232, 249, 0.14);
+      color: #cffafe;
+      font-weight: 700;
+    }
+
     .item h3 {
       margin: 0;
       font-size: 20px;
@@ -256,6 +371,52 @@
       color: var(--text-soft);
       font-size: 15px;
       line-height: 1.7;
+    }
+
+    .status-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 72px;
+    }
+
+    .status-card {
+      padding: 28px;
+      border-radius: 28px;
+      background: rgba(15, 23, 42, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .status-card h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .status-card p {
+      margin: 12px 0 0;
+      color: var(--text-soft);
+      line-height: 1.7;
+    }
+
+    .timeline {
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .timeline li {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .timeline li:last-child {
+      border-bottom: none;
     }
 
     footer {
@@ -279,14 +440,24 @@
         padding-top: 76px;
       }
 
-      .features {
+      .features,
+      .status-section {
         grid-template-columns: 1fr;
+      }
+
+      .panel {
+        max-width: 620px;
       }
     }
 
     @media (max-width: 640px) {
       .page {
         padding: 18px 16px 28px;
+      }
+
+      .nav-bar {
+        align-items: flex-start;
+        border-radius: 26px;
       }
 
       .nav-links {
@@ -297,8 +468,18 @@
         padding: 58px 0 44px;
       }
 
+      .hero-actions {
+        align-items: stretch;
+      }
+
       .button {
         width: 100%;
+      }
+
+      .panel,
+      .item,
+      .status-card {
+        border-radius: 22px;
       }
 
       footer {
@@ -308,7 +489,6 @@
     }
   </style>
 </head>
-
 <body>
   <div class="page">
     <header class="nav-bar">
@@ -345,28 +525,90 @@
         </div>
 
         <aside class="panel" aria-label="Realtime node metrics">
-          <h2>Realtime Metrics</h2>
-          <p>Last updated automatically</p>
-          <p><strong>Average Response:</strong> 28ms</p>
-          <p><strong>Cache Hit Ratio:</strong> 96.4%</p>
-          <p><strong>Regional Capacity:</strong> 82%</p>
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Realtime Metrics</h2>
+              <p class="panel-subtitle">Last updated automatically</p>
+            </div>
+            <span class="status-pill">
+              <span class="status-dot" aria-hidden="true"></span>
+              Stable
+            </span>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <div>
+                <div class="metric-label">Average Response</div>
+                <div class="metric-value">28ms</div>
+              </div>
+              <div class="metric-trend">-12%</div>
+            </div>
+
+            <div class="metric">
+              <div>
+                <div class="metric-label">Cache Hit Ratio</div>
+                <div class="metric-value">96.4%</div>
+              </div>
+              <div class="metric-trend">Healthy</div>
+            </div>
+
+            <div class="metric">
+              <div>
+                <div class="metric-label">Regional Capacity</div>
+                <div class="metric-value">82%</div>
+              </div>
+              <div class="metric-trend">Available</div>
+            </div>
+          </div>
+
+          <div class="route-map" role="img" aria-label="Abstract network route map"></div>
         </aside>
       </section>
 
       <section class="features" id="coverage" aria-label="Service features">
         <article class="item">
+          <div class="item-icon">01</div>
           <h3>低延迟响应</h3>
           <p>基于多区域接入与缓存命中策略，减少重复回源并提升静态资源加载速度。</p>
         </article>
 
         <article class="item">
+          <div class="item-icon">02</div>
           <h3>高可用架构</h3>
           <p>采用多节点冗余与健康检查机制，在异常情况下自动切换到可用路径。</p>
         </article>
 
         <article class="item">
+          <div class="item-icon">03</div>
           <h3>自动化调度</h3>
           <p>持续分析入站请求、区域容量与链路质量，动态选择更合适的资源路径。</p>
+        </article>
+      </section>
+
+      <section class="status-section" id="status" aria-label="Operational status">
+        <article class="status-card">
+          <h2>当前运行状态</h2>
+          <p>
+            Node 042 当前处于正常服务状态。监控系统持续追踪响应时间、可用率与缓存命中情况。
+          </p>
+          <ul class="timeline">
+            <li><span>HTTPS Endpoint</span><strong>Online</strong></li>
+            <li><span>Static Delivery</span><strong>Online</strong></li>
+            <li><span>Regional Routing</span><strong>Normal</strong></li>
+          </ul>
+        </article>
+
+        <article class="status-card">
+          <h2>服务说明</h2>
+          <p>
+            本节点用于静态内容分发、边缘缓存和基础访问检测。页面内容会随网络维护计划进行轻量更新。
+          </p>
+          <ul class="timeline">
+            <li><span>Maintenance Window</span><strong>None</strong></li>
+            <li><span>Availability Target</span><strong>99.9%</strong></li>
+            <li><span>Region</span><strong>Global</strong></li>
+          </ul>
         </article>
       </section>
     </main>
@@ -383,10 +625,6 @@
     <a href="https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2boKoduKmMEVuLyfMZhrib2Bg-4.woff2">asset-font</a>
     <a href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&amp;fit=crop&amp;w=1000&amp;q=80">asset-cover</a>
     <a href="https://www.google-analytics.com/analytics.js">asset-analytics</a>
-    <a href="/assets/main.css">asset-style</a>
-    <a href="/assets/app.js">asset-script</a>
-    <a href="/assets/edge-map.webp">asset-image</a>
-    <a href="/assets/favicon.svg">asset-icon</a>
   </section>
 </body>
 </html>

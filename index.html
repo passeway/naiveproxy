@@ -1,63 +1,397 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Content Delivery Network | Node 042</title>
-    <!-- 模拟真实浏览器会加载的资源，供 Preamble 提取 -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500&display=swap">
-    <style>
-        :root { --main-blue: #0071e3; --bg-gray: #f5f5f7; }
-        body { font-family: 'Inter', -apple-system, sans-serif; margin: 0; background: #fff; color: #1d1d1f; }
-        .nav-bar { height: 50px; background: rgba(251,251,253,0.8); border-bottom: 1px solid #d2d2d7; }
-        .hero { max-width: 1000px; margin: 100px auto; padding: 0 40px; text-align: center; }
-        h1 { font-size: 56px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 20px; }
-        p { font-size: 24px; color: #86868b; line-height: 1.4; max-width: 700px; margin: 0 auto; }
-        .features { display: flex; justify-content: space-between; max-width: 900px; margin: 80px auto; gap: 30px; }
-        .item { flex: 1; padding: 30px; background: var(--bg-gray); border-radius: 18px; }
-        .item h3 { margin-top: 0; font-size: 21px; }
-        .item p { font-size: 16px; margin-top: 10px; }
-        footer { margin-top: 100px; padding: 40px; font-size: 12px; color: #86868b; text-align: center; border-top: 1px solid #d2d2d7; }
-        /* 隐藏的资源链接，专门给程序读取 */
-        .resource-manifest { display: none; visibility: hidden; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Global Infrastructure Group edge delivery status page.">
+  <meta name="theme-color" content="#0f172a">
+  <title>Global Content Delivery Network | Node 042</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="//www.gstatic.com">
+  <link rel="dns-prefetch" href="//images.unsplash.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+
+  <link rel="preload" href="/assets/edge-map.webp" as="image">
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <script src="/assets/app.js" defer></script>
+
+  <style>
+    :root {
+      --text-main: #f8fafc;
+      --text-soft: rgba(248, 250, 252, 0.72);
+      --text-muted: rgba(248, 250, 252, 0.56);
+      --card-bg: rgba(255, 255, 255, 0.13);
+      --card-border: rgba(255, 255, 255, 0.22);
+      --card-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+      --accent: #67e8f9;
+      --accent-strong: #38bdf8;
+      --success: #86efac;
+      --max-width: 1120px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(103, 232, 249, 0.42), transparent 32%),
+        radial-gradient(circle at 78% 10%, rgba(129, 140, 248, 0.38), transparent 30%),
+        radial-gradient(circle at 50% 88%, rgba(45, 212, 191, 0.25), transparent 34%),
+        linear-gradient(135deg, #0f172a 0%, #155e75 42%, #0369a1 72%, #e0f2fe 140%);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.65), transparent 78%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      position: relative;
+      width: min(100%, var(--max-width));
+      margin: 0 auto;
+      padding: 28px 24px 36px;
+    }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 18px;
+      border: 1px solid var(--card-border);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.28);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 16px 50px rgba(15, 23, 42, 0.16);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      background:
+        linear-gradient(135deg, rgba(103, 232, 249, 0.95), rgba(59, 130, 246, 0.9)),
+        #38bdf8;
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(134, 239, 172, 0.13);
+      color: rgba(236, 253, 245, 0.92);
+      border: 1px solid rgba(134, 239, 172, 0.26);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(134, 239, 172, 0.12);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      align-items: center;
+      gap: 44px;
+      padding: 106px 0 72px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: rgba(224, 242, 254, 0.92);
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 14px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 22px rgba(103, 232, 249, 0.85);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 720px;
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: 0.98;
+      letter-spacing: -0.065em;
+    }
+
+    .hero-copy {
+      max-width: 640px;
+      margin: 24px 0 0;
+      color: var(--text-soft);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.65;
+      letter-spacing: -0.015em;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 20px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .button-primary {
+      background: #f8fafc;
+      color: #0f172a;
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+    }
+
+    .button-secondary {
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      background: rgba(255, 255, 255, 0.09);
+      color: var(--text-main);
+    }
+
+    .panel {
+      position: relative;
+      overflow: hidden;
+      padding: 24px;
+      border-radius: 30px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(22px);
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin: 12px 0 72px;
+    }
+
+    .item {
+      padding: 26px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 52px rgba(15, 23, 42, 0.13);
+    }
+
+    .item h3 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.025em;
+    }
+
+    .item p {
+      margin: 12px 0 0;
+      color: var(--text-soft);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px 0 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .site-index {
+      display: none;
+      visibility: hidden;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 76px;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 18px 16px 28px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        padding: 58px 0 44px;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      footer {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
 </head>
+
 <body>
+  <div class="page">
+    <header class="nav-bar">
+      <a class="brand" href="/" aria-label="Global Infrastructure Group">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Global Infrastructure Group</span>
+      </a>
 
-<div class="nav-bar"></div>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#network">Network</a>
+        <a href="#status">Status</a>
+        <a href="#coverage">Coverage</a>
+      </nav>
 
-<main class="hero">
-    <h1>分布式边缘分发节点</h1>
-    <p>为全球用户提供高速、稳定的静态资源调度服务。通过智能路径优化，确保数据传输的高效与合规。</p>
-    
-    <div class="features">
-        <div class="item">
-            <h3>低延迟响应</h3>
-            <p>基于全球骨干网，大幅提升静态资源加载速度。</p>
+      <div class="status-pill" aria-label="Node status operational">
+        <span class="status-dot" aria-hidden="true"></span>
+        Operational
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="network">
+        <div>
+          <div class="eyebrow">Edge Delivery Node 042</div>
+          <h1>分布式边缘分发节点</h1>
+          <p class="hero-copy">
+            为全球用户提供高速、稳定的静态资源调度服务。通过智能路径优化、缓存策略与区域化接入能力，持续提升内容访问体验。
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="#status">查看节点状态</a>
+            <a class="button button-secondary" href="#coverage">了解覆盖能力</a>
+          </div>
         </div>
-        <div class="item">
-            <h3>高可用架构</h3>
-            <p>多节点冗余设计，保障 99.9% 的系统在线率。</p>
-        </div>
-        <div class="item">
-            <h3>自动化调度</h3>
-            <p>实时分析入站流量，动态分配最优资源路径。</p>
-        </div>
-    </div>
-</main>
 
-<!-- 关键点：这里的链接会被 NaiveProxy 识别并用于模拟 Chrome 预检请求 -->
-<div class="resource-manifest">
-    <a href="https://www.google.com/images/phd/user_photos/any_name.png">Resource_01</a>
-    <a href="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png">Resource_02</a>
-    <a href="https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2boKoduKmMEVuLyfMZhrib2Bg-4.woff2">Resource_03</a>
-    <a href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1000&q=80">Resource_04</a>
-    <img src="https://www.google-analytics.com/analytics.js" alt="ping">
-</div>
+        <aside class="panel" aria-label="Realtime node metrics">
+          <h2>Realtime Metrics</h2>
+          <p>Last updated automatically</p>
+          <p><strong>Average Response:</strong> 28ms</p>
+          <p><strong>Cache Hit Ratio:</strong> 96.4%</p>
+          <p><strong>Regional Capacity:</strong> 82%</p>
+        </aside>
+      </section>
 
-<footer>
-    &copy; 2026 Global Infrastructure Group. Node Status: Operational.
-</footer>
+      <section class="features" id="coverage" aria-label="Service features">
+        <article class="item">
+          <h3>低延迟响应</h3>
+          <p>基于多区域接入与缓存命中策略，减少重复回源并提升静态资源加载速度。</p>
+        </article>
 
+        <article class="item">
+          <h3>高可用架构</h3>
+          <p>采用多节点冗余与健康检查机制，在异常情况下自动切换到可用路径。</p>
+        </article>
+
+        <article class="item">
+          <h3>自动化调度</h3>
+          <p>持续分析入站请求、区域容量与链路质量，动态选择更合适的资源路径。</p>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>&copy; 2026 Global Infrastructure Group. All rights reserved.</span>
+      <span>Node Status: Operational</span>
+    </footer>
+  </div>
+
+  <section class="site-index" aria-hidden="true">
+    <a href="https://www.google.com/images/phd/user_photos/any_name.png">asset-profile</a>
+    <a href="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png">asset-branding</a>
+    <a href="https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2boKoduKmMEVuLyfMZhrib2Bg-4.woff2">asset-font</a>
+    <a href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&amp;fit=crop&amp;w=1000&amp;q=80">asset-cover</a>
+    <a href="https://www.google-analytics.com/analytics.js">asset-analytics</a>
+    <a href="/assets/main.css">asset-style</a>
+    <a href="/assets/app.js">asset-script</a>
+    <a href="/assets/edge-map.webp">asset-image</a>
+    <a href="/assets/favicon.svg">asset-icon</a>
+  </section>
 </body>
 </html>

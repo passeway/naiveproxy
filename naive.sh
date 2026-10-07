@@ -1,384 +1,563 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# NaiveProxy server manager: Debian/Ubuntu (systemd), Alpine (OpenRC).
+BINARY=/usr/bin/caddy
+CONFIG_DIR=/etc/caddy
+CONFIG_FILE=$CONFIG_DIR/Caddyfile
+CLIENT_FILE=$CONFIG_DIR/config.txt
+META_FILE=$CONFIG_DIR/naive-manager.json
+DATA_DIR=/var/lib/caddy
+LOCK_FILE=/run/lock/naiveproxy-manager.lock
+LOG_FILE=/var/log/caddy-naive.log
+CRON_FILE=/etc/periodic/hourly/naiveproxy-logrotate
+ROTATE_STATE=/var/lib/logrotate/naiveproxy.status
+RELEASE_API=https://api.github.com/repos/passeway/naiveproxy/releases/latest
 
-# 定义颜色代码
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-RESET='\033[0m'
-
-
-# 检查是否以 root 权限运行
-check_root() {
-  if [[ $EUID -ne 0 ]]; then
-    echo -e "${RED}错误：请以 root 权限运行此脚本（使用 sudo）${RESET}" | tee -a "$LOG_FILE"
-    exit 1
-  fi
+fail() { printf '错误：%s\n' "$*" >&2; return 1; }
+get_system_type() {
+    local ID=''
+    [ -r /etc/os-release ] && . /etc/os-release
+    case "$ID" in debian|ubuntu|alpine) echo "$ID";; *) return 1;; esac
 }
+get_architecture() {
+    case "$(uname -m)" in x86_64|amd64) echo amd64;; aarch64|arm64) echo arm64;; *) fail '仅支持 AMD64 / ARM64';; esac
+}
+service_file() {
+    if [ "$(get_system_type)" = alpine ]; then echo /etc/init.d/caddy
+    else echo /etc/systemd/system/caddy.service; fi
+}
+service_action() {
+    # Never leak the operation lock into a daemon or its supervisor.
+    if [ "$(get_system_type)" = alpine ]; then rc-service caddy "$@" 9>&-
+    else systemctl "$@" caddy.service 9>&-; fi
+}
+is_running() {
+    if [ "$(get_system_type)" = alpine ]; then service_action status >/dev/null 2>&1
+    else systemctl is-active --quiet caddy.service 9>&-; fi
+}
+is_enabled() {
+    if [ "$(get_system_type)" = alpine ]; then [ -L /etc/runlevels/default/caddy ]
+    else systemctl is-enabled --quiet caddy.service 9>&-; fi
+}
+enable_service() {
+    if [ "$(get_system_type)" = alpine ]; then rc-update add caddy default 9>&-
+    else systemctl enable caddy.service 9>&-; fi
+}
+disable_service() {
+    if [ "$(get_system_type)" = alpine ]; then
+        if is_enabled; then rc-update del caddy default 9>&-; fi
+    else systemctl disable caddy.service 9>&-; fi
+}
+reload_manager() { [ "$(get_system_type)" = alpine ] || systemctl daemon-reload 9>&-; }
+is_installed() { [ -x "$BINARY" ] && [ -f "$CONFIG_FILE" ]; }
+is_managed() {
+    if [ -f "$META_FILE" ] && grep -q '"project": "passeway/naiveproxy"' "$META_FILE"; then return 0; fi
+    # Recognize the old installer without claiming arbitrary Caddy deployments.
+    [ -f "$CONFIG_FILE" ] && [ -f "$CLIENT_FILE" ] && [ -f "$(service_file)" ] &&
+        grep -q '^naive+https://' "$CLIENT_FILE" && grep -q 'forward_proxy' "$CONFIG_FILE" &&
+        grep -Fq "$BINARY run" "$(service_file)" && grep -Fq "$CONFIG_FILE" "$(service_file)"
+}
+require_managed() { is_installed && is_managed || { fail '未检测到本项目安装；请先安装，或检查是否为其他 Caddy 服务'; return 1; }; }
+install_dependencies() {
+    case "$(get_system_type)" in
+        debian|ubuntu)
+            apt-get update && apt-get -o DPkg::Lock::Timeout=120 install -y bash curl ca-certificates python3 iproute2 util-linux || return 1;;
+        alpine)
+            apk add --no-cache bash curl ca-certificates python3 iproute2 openrc busybox-openrc flock libcap logrotate gcompat libstdc++ || return 1;;
+        *) fail '仅支持 Debian、Ubuntu、Alpine'; return 1;;
+    esac
+}
+ensure_lock_tool() {
+    command -v flock >/dev/null 2>&1 && return 0
+    if [ "$(get_system_type)" = alpine ]; then apk add --no-cache flock
+    else apt-get update && apt-get -o DPkg::Lock::Timeout=120 install -y util-linux; fi
+}
+with_lock() (
+    umask 077
+    mkdir -p "$(dirname "$LOCK_FILE")" || return 1
+    exec 9>"$LOCK_FILE" || return 1
+    flock -n 9 || { fail '已有 NaïveProxy 管理操作正在运行'; return 1; }
+    "$@"
+)
+write_file() (
+    local destination="$1" mode="$2" owner="$3" temporary
+    [ ! -L "$destination" ] || { fail "拒绝覆盖符号链接：$destination"; return 1; }
+    temporary=$(mktemp "${destination}.tmp.XXXXXX") || return 1
+    trap 'rm -f "$temporary"' EXIT
+    trap 'exit 130' INT; trap 'exit 143' TERM HUP
+    cat > "$temporary" && chown "$owner" "$temporary" && chmod "$mode" "$temporary" && mv -f "$temporary" "$destination"
+)
 
+# Parsing, cryptographic randomness and URI escaping stay out of shell substitutions.
+data_tool() {
+    python3 - "$@" <<'PY'
+import base64, hashlib, ipaddress, json, os, re, secrets, shutil, socket, sys, tarfile
+from pathlib import Path
+from urllib.parse import quote, unquote, urlsplit
 
-# 检查 NaïveProxy 安装状态
-check_naiveproxy_status() {
-  if command -v caddy &> /dev/null; then
-    return 0
-  else
+def write(path, value):
+    Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2)+'\n')
+    os.chmod(path, 0o600)
+def domain(value):
+    value=value.lower().rstrip('.')
+    if len(value)>253 or '.' not in value: raise ValueError('请输入完整域名')
+    try: ipaddress.ip_address(value)
+    except ValueError: pass
+    else: raise ValueError('请使用域名，而非 IP 地址')
+    if not all(re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', x) for x in value.split('.')):
+        raise ValueError('域名格式无效；国际化域名请使用 punycode')
+    return value
+def walk(obj):
+    if isinstance(obj,dict):
+        yield obj
+        for value in obj.values(): yield from walk(value)
+    elif isinstance(obj,list):
+        for value in obj: yield from walk(value)
+def connection(config):
+    matches=[]
+    for server in config.get('apps',{}).get('http',{}).get('servers',{}).values():
+        handlers=[x for x in walk(server.get('routes',[])) if x.get('handler')=='forward_proxy']
+        for handler in handlers: matches.append((server,handler))
+    if len(matches)!=1: raise ValueError('需要唯一的 forward_proxy 入站才能自动导出')
+    server,handler=matches[0]
+    ports={int(x.rsplit(':',1)[1]) for x in server.get('listen',[])}
+    if len(ports)!=1 or not 1<=next(iter(ports))<=65535: raise ValueError('无法确定唯一代理端口')
+    tls=config.get('apps',{}).get('tls',{})
+    names=set(tls.get('certificates',{}).get('automate',[]))
+    for policy in tls.get('automation',{}).get('policies',[]): names.update(policy.get('subjects',[]))
+    for item in walk(server.get('routes',[])): names.update(item.get('host',[]))
+    if len(names)!=1: raise ValueError('无法确定唯一域名；请检查自定义站点配置')
+    creds=handler.get('auth_credentials',[])
+    if len(creds)!=1: raise ValueError('需要唯一的认证账户才能自动导出')
+    # Caddy's [][]byte JSON representation wraps the Basic Auth token twice.
+    decoded=base64.b64decode(base64.b64decode(creds[0],validate=True),validate=True).decode()
+    user,sep,password=decoded.partition(':')
+    if not sep or not user or not password: raise ValueError('认证信息无效')
+    return dict(domain=domain(next(iter(names))),port=next(iter(ports)),user=user,password=password)
+try:
+    action,*args=sys.argv[1:]
+    if action=='release':
+        release=json.loads(Path(args[0]).read_text()); arch=args[1]
+        tag=release.get('tag_name','')
+        if release.get('draft') is not False or release.get('prerelease') is not False or not re.fullmatch(r'v\d+\.\d+\.\d+',tag):
+            raise ValueError('Release 不是有效的稳定版本')
+        name=f'caddy_{tag[1:]}_linux_{arch}.tar.gz'
+        url=f'https://github.com/passeway/naiveproxy/releases/download/{tag}/{name}'
+        assets=[a for a in release.get('assets',[]) if a.get('name')==name and a.get('browser_download_url')==url]
+        if len(assets)!=1: raise ValueError('缺少当前架构的发布文件')
+        digest=assets[0].get('digest','')
+        if not re.fullmatch(r'sha256:[0-9a-f]{64}',digest or ''): raise ValueError('发布文件缺少 SHA-256 摘要')
+        print(tag+'\t'+url+'\t'+digest[7:])
+    elif action=='extract':
+        archive,digest,target=args
+        checksum=hashlib.sha256()
+        with open(archive,'rb') as f:
+            for block in iter(lambda:f.read(1024*1024),b''): checksum.update(block)
+        if checksum.hexdigest()!=digest: raise ValueError('安装包 SHA-256 校验失败')
+        with tarfile.open(archive,'r:gz') as tar:
+            members=[m for m in tar.getmembers() if m.name in ('caddy','./caddy')]
+            if len(members)!=1 or not members[0].isfile() or members[0].size>200*1024*1024:
+                raise ValueError('安装包中的 Caddy 文件无效')
+            with tar.extractfile(members[0]) as source,open(target,'wb') as destination: shutil.copyfileobj(source,destination)
+        os.chmod(target,0o755)
+    elif action=='domain': print(domain(args[0]))
+    elif action=='dns':
+        names=sorted({x[4][0] for x in socket.getaddrinfo(domain(args[0]),443,type=socket.SOCK_STREAM)})
+        if not names: raise ValueError('域名无解析记录')
+        print('\n'.join(names))
+    elif action=='ip': print(ipaddress.ip_address(args[0]))
+    elif action=='new':
+        directory,host,email,site=args;host=domain(host)
+        if email and not re.fullmatch(r'[A-Za-z0-9._+%\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}',email):
+            raise ValueError('邮箱格式无效，可留空使用默认 ACME 设置')
+        username=secrets.token_hex(8);password=secrets.token_urlsafe(32)
+        tls='\n\ttls '+email if email else ''
+        Path(directory,'Caddyfile').write_text(
+            '{\n\torder forward_proxy before file_server\n\tlog {\n\t\texclude http.log.error\n\t}\n}\n'
+            f':443, {host} {{{tls}\n\tencode gzip\n\tforward_proxy {{\n'
+            f'\t\tbasic_auth {username} {password}\n\t\thide_ip\n\t\thide_via\n\t\tprobe_resistance\n\t}}\n'
+            f'\tfile_server {{\n\t\troot {json.dumps(site)}\n\t}}\n}}\n')
+    elif action=='export':
+        adapted,metadata,previous,name,target=args
+        info=connection(json.loads(Path(adapted).read_text()))
+        if Path(metadata).is_file(): name=json.loads(Path(metadata).read_text()).get('name',name)
+        elif Path(previous).is_file():
+            for line in Path(previous).read_text().splitlines():
+                if line.startswith('naive+https://'): name=unquote(urlsplit(line).fragment) or name;break
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,40}',name): name='Naive'
+        auth=quote(info['user'],safe='')+':'+quote(info['password'],safe='')
+        authority=f"{auth}@{info['domain']}:{info['port']}"
+        value='naive+https://'+authority+'#'+quote(name,safe='')+'\n\n'
+        value+=json.dumps({'listen':'socks://127.0.0.1:1080','proxy':'https://'+authority},indent=2)+'\n'
+        Path(target).write_text(value);os.chmod(target,0o600)
+        write(target+'.meta',{'project':'passeway/naiveproxy','schema':1,'name':name})
+    else: raise ValueError('未知操作')
+except Exception as error:
+    # Never echo configuration values or credentials in parser exceptions.
+    print('配置或下载数据处理失败（'+type(error).__name__+'）；请检查输入、配置结构和发布文件。',file=sys.stderr)
+    sys.exit(1)
+PY
+}
+fetch_public_ip() {
+    local family="$1" endpoint value
+    for endpoint in https://api64.ipify.org https://icanhazip.com; do
+        value=$(curl "-$family" -fsS --connect-timeout 3 --max-time 5 "$endpoint" 2>/dev/null) || continue
+        data_tool ip "$value" 2>/dev/null && return 0
+    done
     return 1
-  fi
 }
-
-# 检查 NaïveProxy 运行状态
-check_naiveproxy_running() {
-  if systemctl status caddy | grep -q "Active: active (running)"; then
-    return 0
-  else
-    return 1
-  fi
+check_domain_dns() {
+    local addresses detected='' address answer family
+    addresses=$(timeout 10 bash -c "$(declare -f data_tool); data_tool dns \"\$1\"" _ "$1") || { fail '域名解析失败'; return 1; }
+    for family in 4 6; do
+        address=$(fetch_public_ip "$family") || continue
+        detected+="$address"$'\n'
+        if grep -Fxq "$address" <<< "$addresses"; then return 0; fi
+    done
+    printf '域名解析结果：\n%s\n检测到的公网地址：\n%s\n' "$addresses" "${detected:-查询失败}" >&2
+    read -r -p '无法自动确认域名指向本机；已确认 DNS/NAT 配置正确？[y/N]: ' answer || return 1
+    [[ "$answer" = y || "$answer" = Y ]] || { fail '请先修正域名解析'; return 1; }
 }
-
-
-# 检查 80 和 443 端口
+country_name() {
+    local value
+    value=$(curl -4fsS --connect-timeout 3 --max-time 5 https://ipinfo.io/country 2>/dev/null) || value=''
+    value=${value//$'\r'/}; value=${value//$'\n'/}
+    if [[ "$value" =~ ^[A-Z]{2}$ ]]; then echo "$value"; else echo Naive; fi
+}
 check_ports() {
-  echo "检测80|443是否被占用"
-  sleep 1
-
-  # 查找占用 80 或 443 的进程
-  ports_info=$(ss -ltnp | awk '$4 ~ /:(80|443)$/')
-
-  if [[ -z "$ports_info" ]]; then
-    echo "检测80|443没有被占用"
-    sleep 1
-  else
-    echo "$ports_info"
-    read -rp "是否结束占用端口的进程？按 Y 确认，其他键退出 [Y/n]: " yn
-    yn=${yn:-Y}  # 如果用户直接回车，默认赋值为 Y
-    if [[ "$yn" =~ ^[Yy]$ ]]; then
-      pids=$(echo "$ports_info" | grep -oP 'pid=\K[0-9]+' | sort -u)
-      if [[ -n "$pids" ]]; then
-        echo "$pids" | xargs -r kill -9
-        echo "已结束80|443占用进程"
-        sleep 1
-      else
-        echo "未结束80|443占用进程"
-        exit 1
-      fi
-    else
-      echo "操作已取消"
-      exit 1
+    local listeners
+    listeners=$(ss -H -ltn) || return 1
+    if awk '$4 ~ /:(80|443)$/ {found=1} END {exit !found}' <<< "$listeners"; then
+        fail 'TCP 80 或 443 已被占用，请先自行处理；未结束任何进程'; return 1
     fi
-  fi
-}
-
-
-
-
-# 生成一个未被占用的端口
-generate_free_port() {
-  local port
-  while true; do
-    port=$(shuf -i 1024-65535 -n 1)  # 生成随机端口
-    if ! ss -tuln | grep -q ":$port"; then  # 检查端口是否被占用
-      echo "$port"
-      break
+    listeners=$(ss -H -lun) || return 1
+    if awk '$4 ~ /:443$/ {found=1} END {exit !found}' <<< "$listeners"; then
+        fail 'UDP 443 已被占用，请先自行处理'; return 1
     fi
-  done
 }
-
-# 安装 NaïveProxy
-install_naiveproxy() {
-  echo "正在安装 NaïveProxy"
-
-  # 检查端口和root权限
-  check_root
-  check_ports
-    
-  # 读取用户输入的域名
-  read -p "请输入您的已解析域名: " domain_name
-
-  if [[ -z "${domain_name}" ]]; then
-    echo "域名不能为空。请重新运行脚本并输入有效的域名。"
-    return 1
-  fi
-  
-  # 检查域名解析是否指向本机
-  domain_ip=$(getent hosts "${domain_name}" | awk '{ print $1 }' | head -n 1)
-  local_ip=$(curl -s http://ipinfo.io/ip)
-
-  if [[ -z "${domain_ip}" || "${domain_ip}" != "${local_ip}" ]]; then
-    echo "域名解析的 IP 地址 (${domain_ip}) 与本机外部 IP 地址 (${local_ip}) 不一致，请检查域名解析设置"
-    exit 1
-  fi
-  echo "域名解析正确继续安装"
-
-  # 生成安全范围内的随机端口
-  random_http_port=$(generate_free_port)
-  random_proxy_port=$(generate_free_port)
-
-  # 生成随机邮箱用户名和密码
-  admin_user=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
-  admin_pass=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
-  admin_mail=$(tr -dc A-Za-z < /dev/urandom | head -c 6)
-
-  # 更新和升级系统包
-  echo "正在升级和更新系统包"
-  if ! apt-get update && apt-get upgrade -y; then
-    echo "系统包更新失败。请检查网络连接或包管理器。"
-    return 1
-  fi
-
-  # 下载 Caddy 内核
-  bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
-
-
-  # 创建并配置 Caddyfile
-  echo "正在创建并配置 Caddyfile"
-  if ! mkdir -p /etc/caddy && touch /etc/caddy/Caddyfile; then
-    echo "无法创建 Caddyfile"
-    return 1
-  fi
-
-  cat <<EOF > /etc/caddy/Caddyfile
-{
-  http_port ${random_http_port}
+download_core() {
+    local stage="$1" arch release tag url digest version modules
+    arch=$(get_architecture) || return 1
+    curl -fsSL --retry 2 --connect-timeout 10 --max-time 40 "$RELEASE_API" -o "$stage/release.json" || return 1
+    release=$(data_tool release "$stage/release.json" "$arch") || return 1
+    IFS=$'\t' read -r tag url digest <<< "$release"
+    printf '下载 Caddy %s（%s）\n' "$tag" "$arch"
+    curl -fL --retry 2 --connect-timeout 10 --max-time 180 "$url" -o "$stage/caddy.tar.gz" || return 1
+    data_tool extract "$stage/caddy.tar.gz" "$digest" "$stage/caddy" || return 1
+    version=$("$stage/caddy" version) && [[ "${version%% *}" = "$tag" ]] || { fail '内核无法运行或版本不符'; return 1; }
+    modules=$("$stage/caddy" list-modules) && grep -Fxq http.handlers.forward_proxy <<< "$modules" || { fail '内核缺少 forward_proxy 模块'; return 1; }
 }
-:${random_proxy_port}, ${domain_name}:${random_proxy_port}
-tls ${admin_mail}@gmail.com
-route {
-  forward_proxy {
-    basic_auth ${admin_user} ${admin_pass}
-    hide_ip
-    hide_via
-    probe_resistance
-  }
- reverse_proxy https://demo.cloudreve.org {
-    header_up Host {upstream_hostport}
-  }
+validate_config() { "$1" validate --config "$2" --adapter caddyfile >/dev/null; }
+prepare_account() {
+    if ! getent group caddy >/dev/null; then
+        if [ "$(get_system_type)" = alpine ]; then addgroup -S caddy || return 1
+        else groupadd --system caddy || return 1; fi
+    fi
+    if ! id caddy >/dev/null 2>&1; then
+        if [ "$(get_system_type)" = alpine ]; then adduser -S -D -H -h "$DATA_DIR" -s /sbin/nologin -G caddy caddy || return 1
+        else useradd --system --gid caddy --home-dir "$DATA_DIR" --shell /usr/sbin/nologin caddy || return 1; fi
+    fi
+    mkdir -p "$CONFIG_DIR" "$DATA_DIR" "$DATA_DIR/naive-site" || return 1
+    chown root:caddy "$CONFIG_DIR" && chmod 750 "$CONFIG_DIR" &&
+        chown caddy:caddy "$DATA_DIR" && chmod 750 "$DATA_DIR" &&
+        chown root:caddy "$DATA_DIR/naive-site" && chmod 750 "$DATA_DIR/naive-site"
 }
+binary_capability() {
+    [ "$(get_system_type)" != alpine ] || setcap cap_net_bind_service=+ep "$1"
+}
+service_template() {
+    if [ "$(get_system_type)" = alpine ]; then
+        cat <<EOF
+#!/sbin/openrc-run
+# Managed by passeway/naiveproxy
+name="NaiveProxy (Caddy)"
+command="$BINARY"
+command_args="run --config $CONFIG_FILE --adapter caddyfile"
+command_user="caddy:caddy"
+supervisor="supervise-daemon"
+respawn_delay=3
+respawn_max=5
+respawn_period=60
+output_log="$LOG_FILE"
+error_log="$LOG_FILE"
+rc_ulimit="-n 1048576"
+export HOME="$DATA_DIR"
+export XDG_DATA_HOME="$DATA_DIR/.local/share"
+export XDG_CONFIG_HOME="$DATA_DIR/.config"
+depend() { need net; }
+start_pre() { checkpath --file --mode 0640 --owner caddy:caddy "$LOG_FILE"; }
 EOF
-
-  # 格式化并验证 Caddyfile
-  if ! caddy fmt --overwrite /etc/caddy/Caddyfile || ! caddy validate --config /etc/caddy/Caddyfile; then
-    echo "Caddyfile 格式或验证失败"
-    return 1
-  fi
-
-  # 确保存在 Caddy 用户组和用户
-  if ! getent group caddy > /dev/null; then
-    groupadd --system caddy
-  fi
-
-  if ! id "caddy" > /dev/null 2>&1; then
-    useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
-  fi
-
-  # 创建 systemd 服务并配置 Caddy 服务
-  if ! touch /etc/systemd/system/caddy.service; then
-    echo "无法创建 caddy.service"
-    return 1
-  fi
-
-  cat <<EOF > /etc/systemd/system/caddy.service
+    else
+        cat <<EOF
 [Unit]
-Description=Caddy
-Documentation=https://caddyserver.com/docs/
-After=network.target network-online.target
-Requires=network-online.target
-
+Description=NaiveProxy (Caddy)
+After=network-online.target
+Wants=network-online.target
 [Service]
 User=caddy
 Group=caddy
-ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
-ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile
-TimeoutStopSec=5s
+Environment=HOME=$DATA_DIR
+Environment=XDG_DATA_HOME=$DATA_DIR/.local/share
+Environment=XDG_CONFIG_HOME=$DATA_DIR/.config
+ExecStart=$BINARY run --config $CONFIG_FILE --adapter caddyfile
+ExecReload=$BINARY reload --config $CONFIG_FILE --adapter caddyfile
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30s
 LimitNOFILE=1048576
-LimitNPROC=512
+UMask=0027
 PrivateTmp=true
 ProtectSystem=full
 AmbientCapabilities=CAP_NET_BIND_SERVICE
-
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 EOF
-
-  # 重载 systemd 守护进程并启动 Caddy 服务
-  systemctl daemon-reload
-  systemctl enable caddy
-  if ! systemctl start caddy; then
-    echo "Caddy 服务启动失败"
-    return 1
-  fi
-
-  # 确认 Caddy 服务状态
-  if check_naiveproxy_running; then
-    echo "NaïveProxy 安装成功并正在运行"
-  else
-    echo "Caddy 未正确启动"
-    return 1
-  fi
-
-  # 输出 NaïveProxy 配置
-  # 获取本机IP地址
-  HOST_IP=$(curl -s http://checkip.amazonaws.com)
-
-  # 获取IP所在国家
-  IP_COUNTRY=$(curl -s http://ipinfo.io/${HOST_IP}/country)
-
-  # 生成客户端配置信息
-  cat << EOF > /etc/caddy/config.txt
-
-naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${IP_COUNTRY}
-
-{
-  "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}"
+    fi
 }
-
-EOF
-
-  # 输出 NaïveProxy 配置
-  echo "naive+https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}#${IP_COUNTRY}"
-
-  cat <<EOF
-{
-  "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://${admin_user}:${admin_pass}@${domain_name}:${random_proxy_port}"
+configure_rotation() {
+    [ "$(get_system_type)" = alpine ] || return 0
+    mkdir -p "$(dirname "$CRON_FILE")" "$(dirname "$ROTATE_STATE")" || return 1
+    write_file "$CONFIG_DIR/naive-logrotate.conf" 640 root:caddy <<EOF || return 1
+$LOG_FILE {
+    size 1M
+    rotate 3
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su root caddy
 }
 EOF
+    write_file "$CRON_FILE" 755 root:root <<EOF || return 1
+#!/bin/sh
+exec /usr/sbin/logrotate -s "$ROTATE_STATE" "$CONFIG_DIR/naive-logrotate.conf"
+EOF
+    rc-update add crond default 9>&- || return 1
+    rc-service crond status >/dev/null 2>&1 9>&- || rc-service crond start 9>&- || return 1
 }
-
-
-
-# 启动 NaïveProxy
-start_naiveproxy() {
-  echo "正在启动 NaïveProxy"
-  if systemctl start caddy; then
-    echo "NaïveProxy 启动成功"
-  else
-    echo "NaïveProxy 启动失败"
-  fi
+wait_running() {
+    local attempt
+    for attempt in 1 2 3; do sleep 1; is_running || { fail '服务未保持运行，请查看日志'; return 1; }; done
 }
-
-# 停止 NaïveProxy
-stop_naiveproxy() {
-  echo "正在停止 NaïveProxy"
-  if systemctl stop caddy; then
-    echo "NaïveProxy 停止成功"
-  else
-    echo "NaïveProxy 停止失败"
-  fi
+# Snapshots retain the old binary inode (including Alpine file capabilities).
+snapshot_files() {
+    local i path
+    TX_PATHS=("$BINARY" "$CONFIG_FILE" "$CLIENT_FILE" "$META_FILE" "$(service_file)" "$CONFIG_DIR/naive-logrotate.conf" "$CRON_FILE" "$DATA_DIR/naive-site/index.html")
+    TX_PRESENT=()
+    for i in "${!TX_PATHS[@]}"; do
+        path=${TX_PATHS[$i]}
+        [ ! -L "$path" ] || { fail "拒绝覆盖符号链接：$path"; return 1; }
+        if [ -e "$path" ]; then
+            [ -f "$path" ] || return 1
+            if [ "$path" = "$BINARY" ]; then ln "$path" "$TX_STAGE/backup.$i" || return 1
+            else cp -p "$path" "$TX_STAGE/backup.$i" || return 1; fi
+            TX_PRESENT[$i]=yes
+        else TX_PRESENT[$i]=no; fi
+    done
 }
-
-
-
-# 更新 NaïveProxy
-update_naiveproxy() {
-  echo "正在更新 NaïveProxy"
-
-  #停止 Caddy 服务器
-  systemctl stop caddy
-
-
-  # 下载 Caddy 服务器
-  bash <(curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/caddy.sh)
-
-  # 启动 Caddy 服务器
-  systemctl start caddy
-
-  echo "NaïveProxy 更新成功"
+restore_files() {
+    local i path temporary result=0
+    for i in "${!TX_PATHS[@]}"; do
+        path=${TX_PATHS[$i]}
+        if [ "${TX_PRESENT[$i]}" = yes ]; then
+            if [ "$path" = "$BINARY" ]; then mv -f "$TX_STAGE/backup.$i" "$path" || result=1
+            else
+                temporary=$(mktemp "${path}.restore.XXXXXX") || { result=1; continue; }
+                cp -p "$TX_STAGE/backup.$i" "$temporary" && mv -f "$temporary" "$path" || { rm -f "$temporary"; result=1; }
+            fi
+        else rm -f "$path" || result=1; fi
+    done
+    return "$result"
 }
-
-
-# 查看 NaïveProxy 配置
-view_naiveproxy() {
-  cat /etc/caddy/config.txt
+rollback_transaction() {
+    local result=0
+    service_action stop >/dev/null 2>&1 || { is_running && result=1; }
+    if [ "$TX_ENABLED" = no ] && is_enabled; then disable_service >/dev/null 2>&1 || result=1; fi
+    restore_files || result=1
+    reload_manager || result=1
+    if [ "$TX_ENABLED" = yes ]; then enable_service || result=1; fi
+    if [ "$TX_RUNNING" = yes ]; then service_action start && wait_running || result=1; fi
+    return "$result"
 }
-
-
-# 卸载 NaïveProxy
-uninstall_naiveproxy() {
-  echo "正在卸载 NaïveProxy"
-
-  # 停止 Caddy 服务
-  systemctl stop caddy
-
-  # 禁用 Caddy 服务
-  systemctl disable caddy
-
-  # 删除 Caddy 可执行文件
-  rm /usr/bin/caddy
-
-  # 删除 Caddy 的配置文件
-  rm -rf /etc/caddy
-
-  # 删除 systemd 服务配置
-  rm /etc/systemd/system/caddy.service
-  systemctl daemon-reload
-
-
-  echo "NaïveProxy 卸载成功"
+transaction_cleanup() {
+    local status=$?
+    trap - EXIT INT TERM HUP
+    if [ "$TX_ACTIVE" = yes ]; then
+        if rollback_transaction; then echo '操作失败，已恢复原有程序、配置和服务状态。' >&2
+        else fail "恢复未完全成功；备份保留在 $TX_STAGE，请检查服务日志"; return 1; fi
+    fi
+    rm -rf "$TX_STAGE"
+    return "$status"
 }
-
-# 显示菜单
+export_stage() {
+    local binary="$1" config="$2" stage="$3" name=Naive
+    if [ ! -f "$META_FILE" ] && [ ! -f "$CLIENT_FILE" ]; then name=$(country_name); fi
+    "$binary" adapt --config "$config" --adapter caddyfile > "$stage/adapted.json" || return 1
+    data_tool export "$stage/adapted.json" "$META_FILE" "$CLIENT_FILE" "$name" "$stage/clients"
+}
+refresh_clients() (
+    require_managed || return 1
+    umask 077
+    local stage
+    stage=$(mktemp -d "$CONFIG_DIR/.export.XXXXXX") || return 1
+    trap 'rm -rf "$stage"' EXIT
+    export_stage "$BINARY" "$CONFIG_FILE" "$stage" || return 1
+    write_file "$CLIENT_FILE" 600 root:root < "$stage/clients" &&
+        write_file "$META_FILE" 600 root:root < "$stage/clients.meta" || return 1
+    cat "$CLIENT_FILE"
+)
+install_or_update() (
+    umask 077
+    operation="${1:-install}"
+    get_architecture >/dev/null || return 1
+    if [ "$operation" = update ]; then require_managed || return 1
+    elif [ -e "$BINARY" ] || [ -e "$CONFIG_FILE" ] || [ -e "$(service_file)" ] ||
+        [ -e /usr/lib/systemd/system/caddy.service ] || [ -e /lib/systemd/system/caddy.service ] || command -v caddy >/dev/null 2>&1; then
+        fail '检测到已有 Caddy；本项目安装请用菜单 5 更新，其他部署请先自行处理'; return 1
+    fi
+    install_dependencies || return 1
+    if [ "$operation" = install ]; then
+        check_ports || return 1
+        read -r -p '请输入已解析的域名: ' domain_input || return 1
+        domain_input=$(data_tool domain "$domain_input") || return 1
+        check_domain_dns "$domain_input" || return 1
+        read -r -p '证书联系邮箱（可留空）: ' email_input || return 1
+    fi
+    mkdir -p "$(dirname "$BINARY")" || return 1
+    TX_STAGE=$(mktemp -d "$(dirname "$BINARY")/.naive-install.XXXXXX") || return 1
+    TX_ACTIVE=no; TX_RUNNING=no; TX_ENABLED=no
+    trap transaction_cleanup EXIT
+    trap 'exit 130' INT; trap 'exit 143' TERM HUP
+    download_core "$TX_STAGE" || return 1
+    if [ "$operation" = install ]; then
+        data_tool new "$TX_STAGE" "$domain_input" "$email_input" "$DATA_DIR/naive-site" || return 1
+    else cp "$CONFIG_FILE" "$TX_STAGE/Caddyfile" || return 1; fi
+    "$TX_STAGE/caddy" fmt --overwrite "$TX_STAGE/Caddyfile" >/dev/null || return 1
+    validate_config "$TX_STAGE/caddy" "$TX_STAGE/Caddyfile" || return 1
+    # Export is preflighted before touching any running service or original file.
+    export_stage "$TX_STAGE/caddy" "$TX_STAGE/Caddyfile" "$TX_STAGE" || return 1
+    prepare_account || return 1
+    is_running && TX_RUNNING=yes
+    is_enabled && TX_ENABLED=yes
+    chown root:root "$TX_STAGE/caddy" && chmod 755 "$TX_STAGE/caddy" && binary_capability "$TX_STAGE/caddy" || return 1
+    snapshot_files || return 1
+    TX_ACTIVE=yes
+    mv -f "$TX_STAGE/caddy" "$BINARY" || return 1
+    write_file "$CONFIG_FILE" 640 root:caddy < "$TX_STAGE/Caddyfile" &&
+        write_file "$CLIENT_FILE" 600 root:root < "$TX_STAGE/clients" &&
+        write_file "$META_FILE" 600 root:root < "$TX_STAGE/clients.meta" || return 1
+    if [ "$operation" = install ]; then
+        write_file "$DATA_DIR/naive-site/index.html" 644 root:caddy <<'HTML' || return 1
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome</title><body><h1>Welcome</h1><p>This website is available over HTTPS.</p></body></html>
+HTML
+    fi
+    unit_mode=644; [ "$(get_system_type)" != alpine ] || unit_mode=755
+    service_template > "$TX_STAGE/service" || return 1
+    write_file "$(service_file)" "$unit_mode" root:root < "$TX_STAGE/service" || return 1
+    configure_rotation && reload_manager || return 1
+    if [ "$operation" = install ] || [ "$TX_ENABLED" = yes ]; then enable_service || return 1; fi
+    if [ "$operation" = install ] || [ "$TX_RUNNING" = yes ]; then
+        service_action restart && wait_running || return 1
+    fi
+    TX_ACTIVE=no
+    echo 'NaïveProxy 安装/更新完成。证书签发进度请查看日志。'
+    cat "$CLIENT_FILE"
+)
+core_only() (
+    # Do not replace a daemon's executable outside the transactional updater.
+    if [ -e "$CONFIG_FILE" ] || [ -e "$(service_file)" ] || [ -e /usr/lib/systemd/system/caddy.service ] || [ -e /lib/systemd/system/caddy.service ] || is_running; then
+        fail '已有 Caddy 服务，请使用管理菜单更新'; return 1
+    fi
+    [ ! -L "$BINARY" ] || { fail '拒绝覆盖符号链接'; return 1; }
+    install_dependencies || return 1
+    umask 077
+    mkdir -p "$(dirname "$BINARY")" || return 1
+    local stage
+    stage=$(mktemp -d "$(dirname "$BINARY")/.naive-core.XXXXXX") || return 1
+    trap 'rm -rf "$stage"' EXIT
+    trap 'exit 130' INT; trap 'exit 143' TERM HUP
+    download_core "$stage" && chown root:root "$stage/caddy" && binary_capability "$stage/caddy" && mv -f "$stage/caddy" "$BINARY"
+)
+start_or_restart() {
+    require_managed || return 1
+    validate_config "$BINARY" "$CONFIG_FILE" && service_action "$1" && wait_running
+}
+stop_service() { require_managed && service_action stop; }
+uninstall_service() {
+    require_managed || return 1
+    local answer
+    read -r -p '卸载程序与本项目配置？保留证书、站点与日志。[y/N]: ' answer || return 0
+    [[ "$answer" = y || "$answer" = Y ]] || { echo '已取消'; return 0; }
+    if is_running; then service_action stop || return 1; fi
+    disable_service || return 1
+    rm -f "$BINARY" "$CONFIG_FILE" "$CLIENT_FILE" "$META_FILE" "$(service_file)" "$CONFIG_DIR/naive-logrotate.conf" "$CRON_FILE" "$ROTATE_STATE" || return 1
+    reload_manager || return 1
+    rmdir "$CONFIG_DIR" 2>/dev/null || :
+    echo 'NaïveProxy 已卸载；证书、站点、用户和日志已保留。'
+}
+show_logs() {
+    local result
+    trap ':' INT
+    (
+        trap - INT
+        if [ "$(get_system_type)" = alpine ]; then exec tail -n 50 -F "$LOG_FILE" 9>&-
+        else exec journalctl -u caddy -n 50 -f -o cat 9>&-; fi
+    )
+    result=$?
+    trap 'exit 130' INT
+    [ "$result" -eq 130 ] && return 0
+    return "$result"
+}
 show_menu() {
-  clear
-  check_naiveproxy_status
-  naiveproxy_status=$?
-  check_naiveproxy_running
-  naiveproxy_running=$?
-
-  echo -e "${GREEN}=== NaïveProxy 管理工具 ===${RESET}"
-  echo -e "${GREEN}当前状态: $(if [ ${naiveproxy_status} -eq 0 ]; then echo "${GREEN}已安装${RESET}"; else echo "${RED}未安装${RESET}"; fi)${RESET}"
-  echo -e "${GREEN}运行状态: $(if [ ${naiveproxy_running} -eq 0 ]; then echo "${GREEN}已运行${RESET}"; else echo "${RED}未运行${RESET}"; fi)${RESET}"
-  echo ""
-  echo "1. 安装 NaïveProxy 服务"
-  echo "2. 启动 NaïveProxy 服务"
-  echo "3. 停止 NaïveProxy 服务"
-  echo "4. 卸载 NaïveProxy 服务"
-  echo "5. 更新 NaïveProxy 内核"
-  echo "6. 查看 NaïveProxy 配置"
-  echo "7. 重启 NaïveProxy 服务"
-  echo "0. 退出"
-  echo -e "${GREEN}===========================${RESET}"
-  read -p "请输入选项编号: " choice
-  echo ""
+    local installed='未安装' running='未运行' version='—' output
+    is_installed && installed='已安装'
+    is_running && running='已运行'
+    if [ -x "$BINARY" ]; then
+        output=$("$BINARY" version 2>/dev/null) && version=${output%% *} || version='未知'
+    fi
+    if [ -t 1 ] && [ -n "${TERM:-}" ]; then clear; fi
+    printf '=== NaïveProxy 管理工具 ===\n安装状态: %s\n运行状态: %s\n运行版本: %s\n\n' "$installed" "$running" "$version"
+    printf '%s\n' '1. 安装 NaïveProxy 服务'
+    if is_installed; then
+        printf '%s\n' '2. 启动 NaïveProxy 服务' '3. 停止 NaïveProxy 服务'
+    fi
+    printf '%s\n' '4. 卸载 NaïveProxy 服务'
+    if is_installed; then
+        printf '%s\n' '5. 更新 NaïveProxy 内核' '6. 查看 NaïveProxy 配置' '7. 重启 NaïveProxy 服务' '8. 查看 NaïveProxy 状态' '9. 查看 NaïveProxy 日志'
+    fi
+    printf '%s\n' '0. 退出' '==========================='
+    read -r -p '请输入选项编号: ' choice
 }
-
-# 捕获 Ctrl+C 信号
-trap 'echo -e "${RED}已取消操作${RESET}"; exit' INT
-
-# 主循环
-while true; do
-  show_menu
-  case "${choice}" in
-    1)
-      install_naiveproxy
-      ;;
-    2)
-      start_naiveproxy
-      ;;
-    3)
-      stop_naiveproxy
-      ;;
-    4)
-      uninstall_naiveproxy
-      ;;
-    5)
-      update_naiveproxy
-      ;;      
-    6)
-      view_naiveproxy
-      ;;
-    7)
-      systemctl reload caddy
-      ;;
-    0)
-      echo -e "${GREEN}已退出 NaïveProxy${RESET}"
-      exit 0
-      ;;
-    *)
-      echo -e "${RED}无效的选项${RESET}"
-      ;;
-  esac
-  read -p "按 enter 键继续..."
-done
+main() {
+    [ "$(id -u)" = 0 ] || { fail '请以 root 运行'; return 1; }
+    get_system_type >/dev/null || { fail '仅支持 Debian、Ubuntu、Alpine'; return 1; }
+    get_architecture >/dev/null && ensure_lock_tool || return 1
+    trap 'exit 130' INT; trap 'exit 143' TERM HUP
+    case "${1:-}" in
+        --core-only) with_lock core_only; return $?;;
+        --install) with_lock install_or_update install; return $?;;
+        --update) with_lock install_or_update update; return $?;;
+        '') ;;
+        *) fail '用法：naive.sh [--install|--update|--core-only]'; return 1;;
+    esac
+    while show_menu; do
+        case "$choice" in
+            1) with_lock install_or_update install;;
+            2) with_lock start_or_restart start;;
+            3) with_lock stop_service;;
+            4) with_lock uninstall_service;;
+            5) with_lock install_or_update update;;
+            6) with_lock refresh_clients;;
+            7) with_lock start_or_restart restart;;
+            8) service_action status;;
+            9) show_logs;;
+            0) return 0;;
+            *) fail '无效选项';;
+        esac
+        [ "$?" -eq 0 ] || echo '操作未完成，请检查上方错误信息。' >&2
+        read -r -p '按 Enter 键继续...' || return 0
+    done
+    return 0
+}
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi

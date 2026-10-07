@@ -4,11 +4,12 @@
 
 <p><strong>基于 Caddy 的代理部署与服务管理。</strong></p>
 
-<p>从服务端安装到客户端配置，一个交互菜单完成。</p>
+<p>Debian · Ubuntu · Alpine，从安装到维护，一个菜单完成。</p>
 
 <p>
+  <a href="https://github.com/passeway/naiveproxy/actions/workflows/check.yml"><img src="https://img.shields.io/github/actions/workflow/status/passeway/naiveproxy/check.yml?branch=main&amp;style=flat-square&amp;label=Checks" alt="Checks"></a>
   <a href="https://github.com/passeway/naiveproxy/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/passeway/naiveproxy/build.yml?branch=main&amp;style=flat-square&amp;label=Build" alt="Build"></a>
-  <img src="https://img.shields.io/badge/Linux-Debian%20%7C%20Ubuntu-2563eb?style=flat-square" alt="Debian, Ubuntu">
+  <img src="https://img.shields.io/badge/Linux-Debian%20%7C%20Ubuntu%20%7C%20Alpine-2563eb?style=flat-square" alt="Debian, Ubuntu, Alpine">
   <img src="https://img.shields.io/badge/Arch-AMD64%20%7C%20ARM64-475569?style=flat-square" alt="AMD64, ARM64">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/passeway/naiveproxy?style=flat-square&amp;color=475569" alt="License"></a>
 </p>
@@ -24,75 +25,68 @@
 
 </div>
 
-面向 Debian / Ubuntu 的 NaïveProxy 服务端部署脚本。使用集成 `forwardproxy-naive` 模块的 Caddy，通过 systemd 管理服务，并输出客户端分享链接与 JSON 配置。
+使用集成 `forwardproxy-naive` 模块的 Caddy 部署 NaïveProxy 服务端。自动适配 systemd 与 OpenRC，下载本仓库的预编译程序，并生成客户端连接信息。
 
-- **预编译构建** — 从本仓库最新 Release 下载对应架构的 Caddy，部署时无需本机编译。
-- **交互式安装** — 检查域名与端口，生成随机端口及认证信息，创建服务并配置开机自启。
-- **统一管理** — 在同一菜单中启停、更新、卸载服务，以及查看安装时生成的连接信息。
+- **统一部署** — 安装所需依赖，生成随机凭据，配置 HTTPS 服务与开机自启。
+- **校验与恢复** — 校验下载摘要、程序版本、模块和配置；替换后启动失败时尝试恢复原程序、配置与服务状态。
+- **连接与维护** — 从当前服务端配置导出节点，在菜单中完成启停、更新、状态检查和日志查看。
 
 ## 快速开始
 
-主脚本依赖 **apt-get 与 systemd**，适用于 **Debian / Ubuntu**，支持 **AMD64 / ARM64**。请使用 **root** 账户运行。
+支持 **AMD64 / ARM64**，请使用 **root** 账户。准备一个直接解析到服务器公网地址的域名；使用 CDN DNS 服务时，设为仅 DNS 解析。
 
-准备一个已直接解析到服务器公网地址的域名；使用 CDN DNS 服务时，设为仅 DNS 解析。终端需已安装 `bash`、`curl`、`ca-certificates` 和 `iproute2`。
+**Debian / Ubuntu · systemd**
+
+终端需已安装 `bash`、`curl` 与 CA 证书。
 
 ```bash
 bash <(curl -fsSL https://naiveproxy-sigma.vercel.app)
 ```
 
-1. 选择 **1** 安装，按提示输入已解析的域名。
-2. 在云安全组和服务器防火墙中放行生成的代理 **TCP 端口**，确认 TLS 证书签发成功。
-3. 将输出的链接或 JSON 配置导入客户端。
+**Alpine · OpenRC**
 
-> **安装前确认**
->
-> 脚本会检查 TCP 80 / 443 占用；提示是否结束占用进程时，直接按 Enter 会默认确认并强制结束进程。已有网站时请选择 `n`，先处理端口冲突。脚本还会写入 `/usr/bin/caddy`、`/etc/caddy` 和 `caddy.service`，已有 Caddy 部署请先备份。
+首次运行先安装命令依赖：
 
-<details>
-<summary>首次运行依赖与备用入口</summary>
-
-安装命令依赖：
-
-```bash
-apt-get update &&
-apt-get install -y bash curl ca-certificates iproute2
+```sh
+apk add --no-cache bash curl ca-certificates
+bash -c 'bash <(curl -fsSL https://naiveproxy-sigma.vercel.app)'
 ```
 
-也可以直接下载主脚本：
+选择 **1** 安装，输入已解析的域名；证书联系邮箱可留空。其余运行依赖由脚本安装。
 
-```bash
+> **端口与证书**
+>
+> 新安装使用标准 HTTPS **443**，HTTP 验证入口保持 **80**。请在云安全组和防火墙中放行 TCP 80 / 443，并确认这些端口能从公网到达服务器。Caddy 启动后异步申请证书，进程运行不等于证书已签发，可通过菜单 **9** 查看进度。使用 HTTP/3 时还需放行 UDP 443。
+
+安装前会检查 TCP 80 / 443 和 UDP 443 占用；发现冲突时退出，由你处理现有服务。脚本不会强制结束占用进程，也不会执行全系统软件包升级。
+
+<details>
+<summary>备用入口 · 直接从 GitHub 下载</summary>
+
+在已安装 `bash`、`curl` 和 CA 证书的终端执行：
+
+```sh
 curl -fsSL https://raw.githubusercontent.com/passeway/naiveproxy/main/naive.sh -o /tmp/naiveproxy-manager.sh &&
 bash /tmp/naiveproxy-manager.sh
 ```
 
-</details>
-
-<details>
-<summary>域名、端口与证书</summary>
-
-代理连接使用脚本生成的端口；证书签发还需要正确的验证入口。
-
-Caddy 的 HTTP-01 验证使用外部 TCP 80，TLS-ALPN-01 验证使用外部 TCP 443。脚本将 `http_port` 设为随机端口，且未自动添加端口转发规则；这不会改变证书机构访问的外部端口。若使用 HTTP-01，需要将外部 80 转发到实际 HTTP 监听端口，或调整 Caddy 配置使其监听 80。TLS-ALPN-01 则需确保外部 443 能到达相应验证监听端口。
-
-服务进程运行不等于证书已签发。遇到 TLS 错误时，请检查域名解析、验证端口与 Caddy 日志。
-
-参考：[Caddy 自动 HTTPS](https://caddyserver.com/docs/automatic-https#acme-challenges) · [`http_port` 说明](https://caddyserver.com/docs/caddyfile/options#http-port)。
+域名会校验格式，并检查 IPv4 / IPv6 解析。如果无法确认解析地址与检测到的公网地址匹配，会显示结果并询问是否继续；留空或输入 `n` 取消。
 
 </details>
 
 ## 客户端配置
 
-安装完成后，脚本会显示连接信息，并保存到 `/etc/caddy/config.txt`。也可通过菜单 **6** 再次查看。
+安装完成后显示连接信息，保存在 `/etc/caddy/config.txt`。菜单 **6** 会从**当前 Caddyfile** 重新读取域名、端口及认证信息后导出。
 
 ### 分享链接
 
 使用支持 `naive+https` 链接的客户端导入：
 
 ```text
-naive+https://USERNAME:PASSWORD@proxy.example.com:PORT#HK
+naive+https://USERNAME:PASSWORD@proxy.example.com:443#HK
 ```
 
-节点标签来自公网 IP 的国家或地区查询结果。示例中的域名、端口和认证信息请替换为实际输出。
+新安装自动查询国家或地区代码作为节点名称，例如 `HK`、`US`；查询失败时使用 `Naive`。示例中的域名与凭据请替换为实际输出。
 
 ### NaïveProxy JSON
 
@@ -101,35 +95,52 @@ naive+https://USERNAME:PASSWORD@proxy.example.com:PORT#HK
 ```json
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://USERNAME:PASSWORD@proxy.example.com:PORT"
+  "proxy": "https://USERNAME:PASSWORD@proxy.example.com:443"
 }
 ```
 
 客户端启动后，本地 SOCKS 入口为 `127.0.0.1:1080`。客户端程序及使用方法参见 [NaïveProxy 上游项目](https://github.com/klzgrad/naiveproxy)。
 
-`config.txt` 同时包含链接和 JSON，请按所需格式分别复制。手动修改服务端域名、端口或凭据后，也需更新客户端内容；菜单 **6** 只读取已保存的文件。
+`config.txt` 包含链接与 JSON，请按所需格式分别复制。自动导出面向单域名、单入站、单账户配置；无法唯一识别的自定义配置会报错，不会猜测连接参数。
 
 ## 服务管理
 
-再次运行安装命令即可进入菜单。服务名称为 **`caddy`**，运行账户为 **`caddy`**。
+再次运行安装命令即可进入菜单。服务名称为 **`caddy`**，以 **`caddy`** 专用账户运行。菜单顶部显示安装状态、运行状态和程序版本。
+
+常用操作：**5** 更新、**6** 导出节点、**7** 重启、**8** 状态、**9** 日志。
 
 <details>
 <summary>完整菜单</summary>
 
+未安装时显示安装、卸载与退出；安装后显示完整菜单，保留原有选项编号。
+
 | 选项 | 操作 |
 | :---: | :--- |
 | `1` | 安装 NaïveProxy 服务端 |
-| `2` | 启动服务 |
+| `2` | 校验配置并启动服务 |
 | `3` | 停止服务 |
-| `4` | 卸载服务及配置 |
-| `5` | 下载本仓库最新 Release 的 Caddy 并重新启动 |
-| `6` | 查看已保存的客户端连接信息 |
-| `7` | 菜单显示“重启”，实际执行配置重载 |
+| `4` | 卸载程序及本项目配置，需输入 `y` 确认 |
+| `5` | 更新 Caddy 内核 |
+| `6` | 根据当前配置重新生成并查看节点 |
+| `7` | 校验配置并重启进程 |
+| `8` | 查看服务状态 |
+| `9` | 查看实时日志，按 `Ctrl+C` 返回菜单 |
 | `0` | 退出 |
 
-选项 **7** 调用 `systemctl reload caddy`。需要完整重启进程时，使用 `systemctl restart caddy`。
+菜单 **7** 现在执行真正的重启。修改配置后，先选择 **7**，再选择 **6** 重新导出客户端信息。
 
-更新会先停止服务，再下载并启动，期间连接会中断。当前脚本未提供自动备份或失败回滚。卸载会删除程序、`/etc/caddy` 及服务文件，保留 `caddy` 用户和 `/var/lib/caddy` 下的数据。
+</details>
+
+<details>
+<summary>更新、旧版兼容与卸载</summary>
+
+更新从本仓库最新稳定 Release 下载对应架构的程序，校验 GitHub 发布文件的 SHA-256 摘要，并检查版本、`forward_proxy` 模块和现有配置。预检查失败时，不停止正在运行的服务。
+
+替换阶段暂存原程序与配置；文件写入、服务注册或启动失败时，尝试恢复原有文件及启用、运行状态。恢复失败会保留备份目录并显示其位置。成功后清理临时备份，不保留长期历史版本。依赖包、系统账户及 Caddy 运行数据不属于文件回滚范围。
+
+可识别旧脚本的常见安装。选择 **5** 更新时保留原域名、端口、凭据与配置含义，包括旧版随机端口；不会自动迁移到 443。更新前原本停止的服务保持停止，原本未启用自启的服务保持该状态。
+
+卸载删除本项目的程序、配置、服务定义和日志轮转任务，保留证书、站点、系统账户与日志。配置目录内的其他文件也会保留。
 
 </details>
 
@@ -139,52 +150,61 @@ naive+https://USERNAME:PASSWORD@proxy.example.com:PORT#HK
 | 路径 | 用途 |
 | :--- | :--- |
 | `/usr/bin/caddy` | 集成 NaïveProxy 模块的 Caddy |
-| `/etc/caddy/Caddyfile` | 服务端配置 |
-| `/etc/caddy/config.txt` | 安装时生成的链接与 JSON |
-| `/etc/systemd/system/caddy.service` | systemd 服务定义 |
-| `/var/lib/caddy` | Caddy 用户目录及运行数据 |
+| `/etc/caddy/Caddyfile` | 服务端配置，权限 `root:caddy 640` |
+| `/etc/caddy/config.txt` | 导出的链接与 JSON，权限 `root:root 600` |
+| `/etc/caddy/naive-manager.json` | 管理标识与节点名称，权限 `root:root 600` |
+| `/var/lib/caddy/naive-site/index.html` | 新安装生成的静态页面 |
+| `/etc/systemd/system/caddy.service` | Debian / Ubuntu 服务定义 |
+| `/etc/init.d/caddy` | Alpine 服务定义 |
+| `/var/log/caddy-naive.log` | Alpine 运行日志 |
 
-生成的配置启用 `basic_auth`、`hide_ip`、`hide_via` 与 `probe_resistance`，并配置到 `https://demo.cloudreve.org` 的反向代理。
+新配置启用 `basic_auth`、`hide_ip`、`hide_via` 与 `probe_resistance`，并提供本地静态页面。新安装生成 16 位十六进制用户名和由 32 字节随机数据编码的密码。
 
-TLS 联系邮箱由脚本随机生成，可在 Caddyfile 中替换为有效联系邮箱。仓库提供的 `index.html` 是独立静态页面，主脚本当前不会自动部署它。
+Alpine 使用 `busybox-openrc` 提供定时服务，日志每小时检查一次，超过 1 MiB 时轮转，保留 3 份压缩归档；检查间隔内仍可能增长。程序通过 `cap_net_bind_service` 文件能力绑定低端口，实际运行账户仍为 `caddy`。
 
 </details>
 
-<details>
-<summary>配置校验、重载与状态检查</summary>
+## 排障与验证
 
-修改配置后，先校验，再重载：
+先检查配置，再查看对应系统的服务状态与日志。
 
 ```bash
-caddy fmt --overwrite /etc/caddy/Caddyfile &&
-caddy validate --config /etc/caddy/Caddyfile &&
-systemctl reload caddy
+caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
-查看运行状态、版本与日志：
+<details>
+<summary>Debian / Ubuntu · systemd</summary>
 
 ```bash
 systemctl status caddy --no-pager
-caddy version
 journalctl -u caddy -n 50 --no-pager
-```
-
-查看实时日志，按 `Ctrl+C` 结束：
-
-```bash
-journalctl -u caddy -f
 ```
 
 </details>
 
-## 构建与排障
+<details>
+<summary>Alpine · OpenRC</summary>
 
-本仓库通过 [GitHub Actions](https://github.com/passeway/naiveproxy/actions/workflows/build.yml) 手动触发构建，使用 xcaddy 编译 AMD64 / ARM64 版本，并发布到 [Releases](https://github.com/passeway/naiveproxy/releases)。安装脚本获取的是**本仓库最新发布的构建**，版本更新取决于发布进度。
+```sh
+rc-service caddy status
+tail -n 50 /var/log/caddy-naive.log
+getcap /usr/bin/caddy
+```
+
+若日志提示无法绑定低端口，检查 `getcap` 输出是否包含 `cap_net_bind_service=ep`，以及 VPS 是否允许该文件能力。程序更新时会重新设置此能力。
+
+</details>
+
+[自动检查](https://github.com/passeway/naiveproxy/actions/workflows/check.yml) 覆盖 Debian、Ubuntu 和 Alpine 容器中的依赖安装、脚本回归、真实 Caddy 配置与 HTTPS CONNECT 代理流量。服务生命周期通过模拟命令验证；容器检查不替代真实 VPS 的开机自启、公网证书签发与 ARM64 实机验证。
+
+## 构建与发布
+
+[构建工作流](https://github.com/passeway/naiveproxy/actions/workflows/build.yml) 手动触发，使用 xcaddy 编译 AMD64 / ARM64 程序，发布到 [Releases](https://github.com/passeway/naiveproxy/releases)。安装器获取的是**本仓库最新发布的构建**，更新进度取决于本仓库的发布。
 
 <details>
-<summary>从源码编译</summary>
+<summary>从源码编译与独立下载</summary>
 
-准备好 Go 环境后，执行：
+准备好 Go 环境后：
 
 ```bash
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest &&
@@ -192,32 +212,14 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest &&
   --with github.com/caddyserver/forwardproxy=github.com/klzgrad/forwardproxy@naive
 ```
 
-命令在当前目录生成 `caddy`。检查版本与模块：
+检查生成的程序：
 
 ```bash
 ./caddy version
 ./caddy list-modules | grep forward_proxy
 ```
 
-如需独立下载本仓库的预编译程序，可使用 [caddy.sh](caddy.sh)；该脚本会写入 `/usr/bin/caddy`，不负责创建服务端配置或 systemd 服务。
-
-</details>
-
-<details>
-<summary>常见问题</summary>
-
-- **提示域名解析不一致**：脚本比较 `getent hosts` 的首条结果与公网地址查询结果。检查 A / AAAA 记录及返回的地址族；多个解析记录或 CDN 代理可能导致比较不一致。
-- **启动后仍无法连接**：检查实际代理端口、证书签发日志，以及客户端域名和凭据。
-- **配置中提示不认识 `forward_proxy`**：确认使用包含对应模块的 Caddy，可通过 `caddy list-modules` 检查。
-- **修改配置后客户端仍使用旧信息**：同步修改客户端配置；菜单 **6** 不会重新生成连接信息。
-- **更新后服务未运行**：查看 `systemctl status caddy` 与 `journalctl -u caddy`；菜单的完成提示不能代替状态检查。
-
-</details>
-
-<details>
-<summary>终端预览</summary>
-
-![NaïveProxy 管理菜单示例](image.png)
+[caddy.sh](caddy.sh) 保留独立下载入口，复用主脚本的下载与校验流程。它只安装程序；检测到已有 Caddy 服务时会拒绝替换，请改用管理菜单 **5**。
 
 </details>
 

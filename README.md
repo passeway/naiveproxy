@@ -83,8 +83,10 @@ bash /tmp/naiveproxy-manager.sh
 使用支持 `naive+https` 链接的客户端导入：
 
 ```text
-naive+https://USERNAME:PASSWORD@proxy.example.com:443#HK
+naive+https://USERNAME:PASSWORD@proxy.example.com#HK
 ```
+
+默认 HTTPS 端口 `443` 在链接和 JSON 中省略；已有配置使用其他端口时，会保留实际端口。
 
 新安装自动查询国家或地区代码作为节点名称，例如 `HK`、`US`；查询失败时使用 `Naive`。示例中的域名与凭据请替换为实际输出。
 
@@ -95,7 +97,7 @@ naive+https://USERNAME:PASSWORD@proxy.example.com:443#HK
 ```json
 {
   "listen": "socks://127.0.0.1:1080",
-  "proxy": "https://USERNAME:PASSWORD@proxy.example.com:443"
+  "proxy": "https://USERNAME:PASSWORD@proxy.example.com"
 }
 ```
 
@@ -153,12 +155,16 @@ naive+https://USERNAME:PASSWORD@proxy.example.com:443#HK
 | `/etc/caddy/Caddyfile` | 服务端配置，权限 `root:caddy 640` |
 | `/etc/caddy/config.txt` | 导出的链接与 JSON，权限 `root:root 600` |
 | `/etc/caddy/naive-manager.json` | 管理标识与节点名称，权限 `root:root 600` |
-| `/var/lib/caddy/naive-site/index.html` | 新安装生成的静态页面 |
+| `/var/lib/caddy/naive-site/index.html` | 仓库首页部署位置 |
 | `/etc/systemd/system/caddy.service` | Debian / Ubuntu 服务定义 |
 | `/etc/init.d/caddy` | Alpine 服务定义 |
 | `/var/log/caddy-naive.log` | Alpine 运行日志 |
 
 新配置启用 `basic_auth`、`hide_ip`、`hide_via` 与 `probe_resistance`，并提供本地静态页面。新安装生成 16 位十六进制用户名和由 32 字节随机数据编码的密码。
+
+新安装将仓库的 [index.html](index.html) 部署为静态首页，字体、背景与图标均内置，无第三方资源或统计请求。导航为页面内跳转，内容为静态介绍，不展示伪造的实时监控数据。
+
+使用最新版脚本选择 **5** 更新时，会为默认站点补齐缺失首页，或替换上一版原样的 Welcome 占位页；已有其他首页会保留。页面下载和检查在替换文件、重启服务之前完成，失败时保留原服务。旧版反向代理或自定义站点配置保持不变。可以直接编辑 `/var/lib/caddy/naive-site/index.html` 定制内容，后续更新不会覆盖；静态文件修改无需重启 Caddy。
 
 Alpine 使用 `busybox-openrc` 提供定时服务，日志每小时检查一次，超过 1 MiB 时轮转，保留 3 份压缩归档；检查间隔内仍可能增长。程序通过 `cap_net_bind_service` 文件能力绑定低端口，实际运行账户仍为 `caddy`。
 
@@ -195,7 +201,7 @@ getcap /usr/bin/caddy
 
 </details>
 
-[自动检查](https://github.com/passeway/naiveproxy/actions/workflows/check.yml) 覆盖 Debian、Ubuntu 和 Alpine 容器中的依赖安装、脚本回归、真实 Caddy 配置与 HTTPS CONNECT 代理流量。服务生命周期通过模拟命令验证；容器检查不替代真实 VPS 的开机自启、公网证书签发与 ARM64 实机验证。
+[自动检查](https://github.com/passeway/naiveproxy/actions/workflows/check.yml) 覆盖 Debian、Ubuntu 和 Alpine 容器中的依赖安装、脚本回归、真实 Caddy 配置与 HTTPS CONNECT 代理流量。静态首页另外检查 320–1440 px 布局、导航、键盘操作、减少动态效果偏好及无 JavaScript 浏览，并保留页面截图。服务生命周期通过模拟命令验证；容器检查不替代真实 VPS 的开机自启、公网证书签发与 ARM64 实机验证。
 
 ## 构建与发布
 
@@ -233,3 +239,4 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest &&
   <a href="https://github.com/passeway/naiveproxy/releases">下载构建</a> &nbsp;·&nbsp;
   <a href="https://github.com/passeway/naiveproxy/issues">问题反馈</a>
 </p>
+

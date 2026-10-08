@@ -1,656 +1,255 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Global Infrastructure Group — 关注网络接入、内容交付与运行维护的基础设施设计。">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
   <title>Global Infrastructure Group</title>
-
-  <meta name="description"
-        content="Global Infrastructure Group edge delivery platform." />
-
-  <meta name="theme-color" content="#0f172a" />
-
-  <!-- favicon -->
-  <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2216%22 fill=%22%230ea5e9%22/></svg>">
-
-  <!-- preload / preconnect -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin>
-
-  <link rel="dns-prefetch"
-        href="//images.unsplash.com">
-
-  <link rel="dns-prefetch"
-        href="//www.gstatic.com">
-
-  <!-- google fonts -->
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-
-  <!-- analytics -->
-  <script async
-          src="https://www.google-analytics.com/analytics.js"></script>
-
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230ea5e9'/%3E%3Cpath d='M18 43V21h28v7H25v8h14v-4h7v11Z' fill='%23fff'/%3E%3C/svg%3E">
   <style>
     :root {
+      color-scheme: dark;
       --text-main: #f8fafc;
-      --text-soft: rgba(248,250,252,0.72);
-      --text-muted: rgba(248,250,252,0.56);
-
-      --card-bg: rgba(255,255,255,0.12);
-      --card-border: rgba(255,255,255,0.18);
-
-      --success: #86efac;
-
-      --shadow:
-        0 24px 70px rgba(15,23,42,0.25);
-
-      --max-width: 1180px;
+      --text-soft: #c5d3e3;
+      --text-muted: #a8b9ce;
+      --card-bg: rgba(255, 255, 255, .055);
+      --card-border: rgba(255, 255, 255, .14);
+      --accent: #67e8f9;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .16);
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      min-height: 100%;
-      scroll-behavior: smooth;
-    }
-
+    * { box-sizing: border-box; }
+    html { min-height: 100%; scroll-behavior: smooth; scroll-padding-top: 24px; }
     body {
       min-height: 100vh;
       margin: 0;
-
-      font-family:
-        "Inter",
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-
       color: var(--text-main);
-
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       background:
-        linear-gradient(
-          rgba(15,23,42,0.72),
-          rgba(15,23,42,0.72)
-        ),
-
-        url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80");
-
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-
-      overflow-x: hidden;
+        radial-gradient(ellipse at 90% 8%, rgba(14, 116, 144, .26), transparent 55%),
+        radial-gradient(ellipse at 0 65%, rgba(30, 64, 175, .18), transparent 50%),
+        #0f172a;
+      line-height: 1.6;
     }
-
     body::before {
       content: "";
-
       position: fixed;
       inset: 0;
-
       pointer-events: none;
-
       background-image:
-        linear-gradient(
-          rgba(255,255,255,0.045) 1px,
-          transparent 1px
-        ),
-
-        linear-gradient(
-          90deg,
-          rgba(255,255,255,0.045) 1px,
-          transparent 1px
-        );
-
-      background-size: 44px 44px;
-
-      mask-image:
-        linear-gradient(
-          to bottom,
-          rgba(0,0,0,0.75),
-          transparent 78%
-        );
+        linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: linear-gradient(#000, transparent 85%);
     }
-
-    a {
-      color: inherit;
-      text-decoration: none;
+    a { color: inherit; text-decoration: none; }
+    a:focus-visible, [tabindex="-1"]:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 5px;
+      border-radius: 4px;
     }
-
-    .page {
-      position: relative;
-
-      width: min(100%, var(--max-width));
-
-      margin: 0 auto;
-
-      padding: 28px 24px 36px;
+    .skip-link {
+      position: absolute;
+      z-index: 2;
+      top: 12px;
+      left: 16px;
+      padding: 10px 16px;
+      color: #0f172a;
+      background: #f8fafc;
+      transform: translateY(-200%);
     }
-
+    .skip-link:focus { transform: none; }
+    .page { position: relative; width: min(100%, 1180px); margin: 0 auto; padding: 28px 24px 36px; }
     .nav-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-
       gap: 20px;
-
-      padding: 14px 18px;
-
+      padding: 12px 18px;
+      border: 1px solid var(--card-border);
       border-radius: 999px;
-
-      border:
-        1px solid var(--card-border);
-
-      background:
-        rgba(15,23,42,0.30);
-
-      backdrop-filter: blur(18px);
-
-      box-shadow: var(--shadow);
+      background: rgba(15, 23, 42, .8);
     }
-
-    .brand {
-      display: flex;
-      align-items: center;
-
-      gap: 10px;
-
-      font-weight: 700;
-
-      letter-spacing: -0.02em;
-    }
-
+    .brand { display: flex; min-width: 0; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; }
+    .brand-name { min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
     .brand-mark {
-      width: 30px;
-      height: 30px;
-
+      display: grid;
+      flex: 0 0 32px;
+      place-items: center;
+      width: 32px;
+      height: 32px;
       border-radius: 10px;
-
-      background:
-        linear-gradient(
-          135deg,
-          rgba(103,232,249,0.95),
-          rgba(59,130,246,0.9)
-        );
+      color: #0f172a;
+      background: linear-gradient(135deg, #a5f3fc, #38bdf8);
+      font-size: 18px;
     }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-
-      gap: 18px;
-
-      color: var(--text-soft);
-
-      font-size: 14px;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-
-      gap: 8px;
-
-      padding: 8px 12px;
-
+    .nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; color: var(--text-soft); font-size: 13px; }
+    .nav-links a { display: inline-flex; align-items: center; min-height: 44px; }
+    .nav-links a:hover { color: #fff; text-decoration: underline; text-underline-offset: 6px; }
+    .edition {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border: 1px solid rgba(103, 232, 249, .2);
       border-radius: 999px;
-
-      background:
-        rgba(134,239,172,0.12);
-
-      border:
-        1px solid rgba(134,239,172,0.24);
-
-      color:
-        rgba(236,253,245,0.95);
-
-      font-size: 13px;
+      background: rgba(103, 232, 249, .07);
+      color: #a5f3fc;
+      font-size: 12px;
+      white-space: nowrap;
     }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-
-      border-radius: 50%;
-
-      background: var(--success);
-
-      box-shadow:
-        0 0 0 6px rgba(134,239,172,0.12);
-    }
-
     .hero {
       display: grid;
-
-      grid-template-columns:
-        minmax(0, 1.08fr)
-        minmax(320px, 0.92fr);
-
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
       align-items: center;
-
-      gap: 44px;
-
-      padding: 110px 0 72px;
+      gap: 56px;
+      padding: 96px 0 72px;
     }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-
-      gap: 10px;
-
-      margin-bottom: 22px;
-
-      padding: 8px 12px;
-
-      border-radius: 999px;
-
-      background:
-        rgba(255,255,255,0.10);
-
-      border:
-        1px solid rgba(255,255,255,0.14);
-
-      color:
-        rgba(224,242,254,0.92);
-
-      font-size: 14px;
-    }
-
-    .eyebrow::before {
-      content: "";
-
-      width: 8px;
-      height: 8px;
-
-      border-radius: 50%;
-
-      background: #67e8f9;
-    }
-
-    h1 {
-      margin: 0;
-
-      max-width: 720px;
-
-      font-size:
-        clamp(42px, 7vw, 78px);
-
-      line-height: 0.98;
-
-      letter-spacing: -0.065em;
-    }
-
-    .hero-copy {
-      max-width: 640px;
-
-      margin: 24px 0 0;
-
-      color: var(--text-soft);
-
-      font-size:
-        clamp(18px, 2vw, 23px);
-
-      line-height: 1.65;
-    }
-
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-
-      gap: 14px;
-
-      margin-top: 34px;
-    }
-
+    .hero > * { min-width: 0; }
+    .eyebrow { margin: 0 0 24px; color: var(--accent); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; max-width: 9em; font-size: clamp(38px, 5.5vw, 64px); line-height: 1.25; letter-spacing: -.03em; text-wrap: balance; }
+    .hero-copy { max-width: 32em; margin: 24px 0 0; color: var(--text-soft); font-size: 18px; line-height: 1.85; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
     .button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-
       min-height: 48px;
-
-      padding: 0 20px;
-
+      padding: 10px 20px;
       border-radius: 999px;
-
-      font-weight: 600;
-
-      font-size: 15px;
-
-      transition:
-        transform 180ms ease;
-    }
-
-    .button:hover {
-      transform: translateY(-2px);
-    }
-
-    .button-primary {
-      background: #f8fafc;
-
-      color: #0f172a;
-    }
-
-    .button-secondary {
-      border:
-        1px solid rgba(255,255,255,0.24);
-
-      background:
-        rgba(255,255,255,0.08);
-    }
-
-    .panel {
-      padding: 24px;
-
-      border-radius: 30px;
-
-      background: var(--card-bg);
-
-      border:
-        1px solid var(--card-border);
-
-      backdrop-filter: blur(22px);
-
-      box-shadow: var(--shadow);
-    }
-
-    .metric {
-      margin-top: 18px;
-
-      padding: 22px;
-
-      border-radius: 22px;
-
-      background:
-        rgba(255,255,255,0.08);
-
-      border:
-        1px solid rgba(255,255,255,0.08);
-    }
-
-    .metric-label {
-      color: var(--text-soft);
-
       font-size: 14px;
+      font-weight: 600;
+      transition: transform 180ms ease;
     }
-
-    .metric-value {
-      margin-top: 8px;
-
-      font-size: 22px;
-      font-weight: 700;
-    }
-
-    .features {
-      display: grid;
-
-      grid-template-columns:
-        repeat(3, 1fr);
-
-      gap: 18px;
-
-      margin: 12px 0 72px;
-    }
-
-    .item {
-      padding: 26px;
-
-      border-radius: 26px;
-
-      background:
-        rgba(255,255,255,0.12);
-
-      border:
-        1px solid rgba(255,255,255,0.16);
-
-      backdrop-filter: blur(18px);
-
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { color: #0f172a; background: #f8fafc; }
+    .button-secondary { border: 1px solid rgba(255, 255, 255, .24); background: rgba(255, 255, 255, .04); }
+    .panel {
+      padding: 28px;
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      background: var(--card-bg);
       box-shadow: var(--shadow);
     }
-
-    .item h3 {
-      margin: 0;
-
-      font-size: 20px;
+    .panel h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+    .panel-intro { margin: 8px 0 24px; color: var(--text-soft); font-size: 14px; }
+    .overview-list { display: grid; gap: 12px; margin: 0; }
+    .overview-item { padding: 18px 20px; border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; background: rgba(255, 255, 255, .04); }
+    .overview-item dt { color: var(--text-muted); font-size: 12px; letter-spacing: .02em; }
+    .overview-item dd { margin: 6px 0 0; font-size: 19px; font-weight: 600; }
+    .section-label { margin: 0 0 20px; color: var(--text-muted); font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+    .features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-bottom: 64px; }
+    .item { min-width: 0; padding: 26px; border: 1px solid var(--card-border); border-radius: 24px; background: var(--card-bg); }
+    .item-number { display: block; margin-bottom: 28px; color: var(--accent); font-size: 12px; letter-spacing: .1em; }
+    .item h3 { margin: 0; font-size: 19px; font-weight: 600; }
+    .item p { margin: 12px 0 0; color: var(--text-soft); font-size: 14px; line-height: 1.8; }
+    footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-top: 24px; border-top: 1px solid var(--card-border); color: var(--text-muted); font-size: 12px; }
+    @media (max-width: 960px) {
+      .edition { display: none; }
+      .hero { gap: 28px; }
     }
-
-    .item p {
-      margin: 12px 0 0;
-
-      color: var(--text-soft);
-
-      line-height: 1.7;
+    @media (max-width: 760px) {
+      .nav-bar { flex-wrap: wrap; gap: 4px 20px; border-radius: 24px; }
+      .nav-links { width: 100%; gap: 24px; }
+      .hero { grid-template-columns: minmax(0, 1fr); gap: 40px; padding: 56px 0 48px; }
+      .features { grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 40px; }
+      .item-number { margin-bottom: 16px; }
     }
-
-    footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      gap: 18px;
-
-      padding: 24px 0 8px;
-
-      color: var(--text-muted);
-
-      font-size: 13px;
+    @media (max-width: 420px) {
+      .page { padding: 16px 16px 28px; }
+      .nav-bar { padding: 12px 14px; }
+      .nav-links { gap: 18px; font-size: 12px; }
+      .eyebrow { font-size: 11px; letter-spacing: .1em; }
+      .hero-copy { font-size: 16px; }
+      .button { width: 100%; }
+      .panel { padding: 22px; border-radius: 24px; }
+      .overview-item { padding: 16px; }
     }
-
-    .site-index {
-      display: none;
-      visibility: hidden;
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .button { transition: none; }
+      .button:hover { transform: none; }
     }
-
-    @media (max-width: 900px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .features {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .nav-links {
-        display: none;
-      }
-
-      .button {
-        width: 100%;
-      }
-
-      footer {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+    @media print {
+      body { color: #111; background: #fff; }
+      body::before, .nav-links, .edition, .hero-actions, .skip-link { display: none; }
+      .page { width: 100%; padding: 0; }
+      .hero { padding: 24px 0; }
+      .panel, .item { background: transparent; border-color: #999; box-shadow: none; break-inside: avoid; }
+      .hero-copy, .panel-intro, .overview-item dt, .item p, footer, .section-label, .eyebrow, .item-number { color: #333; }
     }
   </style>
 </head>
-
 <body>
-
-<div class="page">
-
-  <header class="nav-bar">
-
-    <a class="brand" href="/">
-      <span class="brand-mark"></span>
-      <span>Global Infrastructure Group</span>
-    </a>
-
-    <nav class="nav-links">
-      <a href="#network">Network</a>
-      <a href="#status">Status</a>
-      <a href="#coverage">Coverage</a>
-    </nav>
-
-    <div class="status-pill">
-      <span class="status-dot"></span>
-      Operational
-    </div>
-
-  </header>
-
-  <main>
-
-    <section class="hero" id="network">
-
-      <div>
-
-        <div class="eyebrow">
-          Edge Delivery Node 042
-        </div>
-
-        <h1>
-          分布式边缘网络
-        </h1>
-
-        <p class="hero-copy">
-          为全球用户提供高速、稳定的静态资源调度服务。
-          通过智能路径优化、缓存策略与区域化接入能力，
-          持续提升内容访问体验。
-        </p>
-
-        <div class="hero-actions">
-
-          <a class="button button-primary"
-             href="#status">
-            查看网络状态
-          </a>
-
-          <a class="button button-secondary"
-             href="#coverage">
-            了解覆盖能力
-          </a>
-
-        </div>
-
-      </div>
-
-      <aside class="panel" id="status">
-
-        <h2>Realtime Metrics</h2>
-
-        <p style="color:var(--text-soft)">
-          Last updated automatically
-        </p>
-
-        <div class="metric">
-          <div class="metric-label">
-            Average Response
-          </div>
-
-          <div class="metric-value">
-            28ms
+  <a class="skip-link" href="#main">跳转到正文</a>
+  <div class="page">
+    <header class="nav-bar">
+      <a class="brand" href="#network" aria-label="Global Infrastructure Group 首页">
+        <span class="brand-mark" aria-hidden="true">G</span>
+        <span class="brand-name" lang="en">Global Infrastructure Group</span>
+      </a>
+      <nav class="nav-links" aria-label="主导航" lang="en">
+        <a href="#network">Network</a>
+        <a href="#overview">Overview</a>
+        <a href="#capabilities">Capabilities</a>
+      </nav>
+      <span class="edition" lang="en">Platform brief</span>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="hero" id="network" aria-labelledby="hero-title">
+        <div>
+          <p class="eyebrow" lang="en">Infrastructure &amp; Delivery</p>
+          <h1 id="hero-title">分布式<br>边缘网络</h1>
+          <p class="hero-copy">面向内容交付的基础设施设计。围绕网络接入、资源组织与运维协作，让每一次访问更简单。</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#overview">探索平台概览 <span aria-hidden="true">&nbsp;↗</span></a>
+            <a class="button button-secondary" href="#capabilities">了解设计理念</a>
           </div>
         </div>
-
-        <div class="metric">
-          <div class="metric-label">
-            Cache Hit Ratio
-          </div>
-
-          <div class="metric-value">
-            96.4%
-          </div>
+        <aside class="panel" id="overview" aria-labelledby="overview-title">
+          <h2 id="overview-title" lang="en">Platform overview</h2>
+          <p class="panel-intro">从接入到交付，关注每一个环节。</p>
+          <dl class="overview-list">
+            <div class="overview-item">
+              <dt lang="en">01 / Connectivity</dt>
+              <dd>网络接入</dd>
+            </div>
+            <div class="overview-item">
+              <dt lang="en">02 / Content delivery</dt>
+              <dd>内容交付</dd>
+            </div>
+            <div class="overview-item">
+              <dt lang="en">03 / Operations</dt>
+              <dd>运行维护</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
+      <section id="capabilities" aria-labelledby="capabilities-title">
+        <h2 class="section-label" id="capabilities-title" lang="en">Built around the essentials</h2>
+        <div class="features">
+          <article class="item">
+            <span class="item-number" aria-hidden="true">01 — CONNECT</span>
+            <h3>连接体验</h3>
+            <p>从访问路径到终端呈现，关注不同网络与设备上的使用体验，让内容清晰可达。</p>
+          </article>
+          <article class="item">
+            <span class="item-number" aria-hidden="true">02 — DELIVER</span>
+            <h3>内容组织</h3>
+            <p>以明确的信息结构组织资源，让内容发布、浏览与持续维护都有章可循。</p>
+          </article>
+          <article class="item">
+            <span class="item-number" aria-hidden="true">03 — EVOLVE</span>
+            <h3>持续演进</h3>
+            <p>从简单、可理解的设计出发，为后续的内容增长与协作保留空间。</p>
+          </article>
         </div>
-
-        <div class="metric">
-          <div class="metric-label">
-            Regional Capacity
-          </div>
-
-          <div class="metric-value">
-            82%
-          </div>
-        </div>
-
-      </aside>
-
-    </section>
-
-    <section class="features" id="coverage">
-
-      <article class="item">
-        <h3>低延迟响应</h3>
-
-        <p>
-          基于多区域接入与缓存命中策略，
-          减少重复回源并提升静态资源加载速度。
-        </p>
-      </article>
-
-      <article class="item">
-        <h3>高可用架构</h3>
-
-        <p>
-          采用多节点冗余与健康检查机制，
-          在异常情况下自动切换到可用路径。
-        </p>
-      </article>
-
-      <article class="item">
-        <h3>自动化调度</h3>
-
-        <p>
-          持续分析入站请求、区域容量与链路质量，
-          动态选择更合适的资源路径。
-        </p>
-      </article>
-
-    </section>
-
-  </main>
-
-  <footer>
-
-    <span>
-      &copy; 2026 Global Infrastructure Group.
-      All rights reserved.
-    </span>
-
-    <span>
-      Node Status: Operational
-    </span>
-
-  </footer>
-
-</div>
-
-<!-- hidden resource index -->
-<section class="site-index" aria-hidden="true">
-
-  <a href="https://www.google.com/images/phd/user_photos/any_name.png">
-    asset-profile
-  </a>
-
-  <a href="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png">
-    asset-branding
-  </a>
-
-  <a href="https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa2boKoduKmMEVuLyfMZhrib2Bg-4.woff2">
-    asset-font
-  </a>
-
-  <a href="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&amp;fit=crop&amp;w=1600&amp;q=80">
-    asset-cover
-  </a>
-
-  <a href="https://www.google-analytics.com/analytics.js">
-    asset-analytics
-  </a>
-
-</section>
-
+      </section>
+    </main>
+    <footer lang="en">
+      <span>&copy; 2026 Global Infrastructure Group.</span>
+      <span>Network · Content · Operations</span>
+    </footer>
+  </div>
 </body>
 </html>

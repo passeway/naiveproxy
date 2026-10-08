@@ -11,6 +11,7 @@ LOG_FILE=/var/log/caddy-naive.log
 CRON_FILE=/etc/periodic/hourly/naiveproxy-logrotate
 ROTATE_STATE=/var/lib/logrotate/naiveproxy.status
 RELEASE_API=https://api.github.com/repos/passeway/naiveproxy/releases/latest
+SITE_URL=https://raw.githubusercontent.com/passeway/naiveproxy/main/index.html
 
 fail() { printf '错误：%s\n' "$*" >&2; return 1; }
 get_system_type() {
@@ -185,11 +186,36 @@ try:
                 if line.startswith('naive+https://'): name=unquote(urlsplit(line).fragment) or name;break
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,40}',name): name='Naive'
         auth=quote(info['user'],safe='')+':'+quote(info['password'],safe='')
-        authority=f"{auth}@{info['domain']}:{info['port']}"
+        authority=f"{auth}@{info['domain']}"
+        if info['port']!=443: authority+=f":{info['port']}"
         value='naive+https://'+authority+'#'+quote(name,safe='')+'\n\n'
         value+=json.dumps({'listen':'socks://127.0.0.1:1080','proxy':'https://'+authority},indent=2)+'\n'
         Path(target).write_text(value);os.chmod(target,0o600)
         write(target+'.meta',{'project':'passeway/naiveproxy','schema':1,'name':name})
+    elif action=='site-needed':
+        adapted,root=args
+        config=json.loads(Path(adapted).read_text());page=Path(root,'index.html')
+        serves_site=any(x.get('handler')=='file_server' and x.get('root')==root for x in walk(config))
+        # Only replace the exact placeholder shipped by the previous manager.
+        placeholder='d2b54e71ba979152b43c114f1fb783d441c8a40116aa6d2212179bdd9912b796'
+        if not serves_site: print('no')
+        elif page.is_symlink(): raise ValueError('站点首页不能是符号链接')
+        elif not page.exists(): print('yes')
+        elif page.is_file():
+            old=page.stat().st_size<4096 and hashlib.sha256(page.read_bytes()).hexdigest()==placeholder
+            print('yes' if old else 'no')
+        else: raise ValueError('站点首页不是普通文件')
+    elif action=='site-check':
+        from html.parser import HTMLParser
+        page=Path(args[0])
+        if not 0<page.stat().st_size<=512*1024: raise ValueError('页面大小无效')
+        text=page.read_text(encoding='utf-8')
+        class Page(HTMLParser):
+            def __init__(self): super().__init__();self.tags=set()
+            def handle_starttag(self,tag,attrs): self.tags.add(tag)
+        parser=Page();parser.feed(text);parser.close()
+        if not {'html','head','title','body','main'}<=parser.tags or not text.rstrip().lower().endswith('</html>'):
+            raise ValueError('下载内容不是完整站点首页')
     else: raise ValueError('未知操作')
 except Exception as error:
     # Never echo configuration values or credentials in parser exceptions.
@@ -247,6 +273,14 @@ download_core() {
     modules=$("$stage/caddy" list-modules) && grep -Fxq http.handlers.forward_proxy <<< "$modules" || { fail '内核缺少 forward_proxy 模块'; return 1; }
 }
 validate_config() { "$1" validate --config "$2" --adapter caddyfile >/dev/null; }
+stage_site() {
+    local stage="$1" needed
+    needed=$(data_tool site-needed "$stage/adapted.json" "$DATA_DIR/naive-site") || return 1
+    [ "$needed" = yes ] || return 0
+    curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 10 --max-time 40 \
+        --max-filesize 524288 "$SITE_URL" -o "$stage/index.html" || { fail '站点首页下载失败'; return 1; }
+    data_tool site-check "$stage/index.html" || return 1
+}
 prepare_account() {
     if ! getent group caddy >/dev/null; then
         if [ "$(get_system_type)" = alpine ]; then addgroup -S caddy || return 1
@@ -437,6 +471,7 @@ install_or_update() (
     validate_config "$TX_STAGE/caddy" "$TX_STAGE/Caddyfile" || return 1
     # Export is preflighted before touching any running service or original file.
     export_stage "$TX_STAGE/caddy" "$TX_STAGE/Caddyfile" "$TX_STAGE" || return 1
+    stage_site "$TX_STAGE" || return 1
     prepare_account || return 1
     is_running && TX_RUNNING=yes
     is_enabled && TX_ENABLED=yes
@@ -447,10 +482,8 @@ install_or_update() (
     write_file "$CONFIG_FILE" 640 root:caddy < "$TX_STAGE/Caddyfile" &&
         write_file "$CLIENT_FILE" 600 root:root < "$TX_STAGE/clients" &&
         write_file "$META_FILE" 600 root:root < "$TX_STAGE/clients.meta" || return 1
-    if [ "$operation" = install ]; then
-        write_file "$DATA_DIR/naive-site/index.html" 644 root:caddy <<'HTML' || return 1
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome</title><body><h1>Welcome</h1><p>This website is available over HTTPS.</p></body></html>
-HTML
+    if [ -f "$TX_STAGE/index.html" ]; then
+        write_file "$DATA_DIR/naive-site/index.html" 644 root:caddy < "$TX_STAGE/index.html" || return 1
     fi
     unit_mode=644; [ "$(get_system_type)" != alpine ] || unit_mode=755
     service_template > "$TX_STAGE/service" || return 1
@@ -561,3 +594,4 @@ main() {
     return 0
 }
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi
+

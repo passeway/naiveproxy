@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '*.sh'
+      - 'index.html'
       - 'tests/**'
       - '.github/workflows/check.yml'
   pull_request:
@@ -24,11 +25,20 @@ jobs:
           source ./naive.sh
           mkdir -p "$RUNNER_TEMP/caddy-core"
           download_core "$RUNNER_TEMP/caddy-core"
+      - name: Pull test image with bounded retries
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull "$TEST_IMAGE"; then exit 0; fi
+            if [ "$attempt" -lt 3 ]; then sleep "$((attempt * 5))"; fi
+          done
+          exit 1
       - name: Dependencies, regression checks and HTTPS proxy traffic
         env:
           TEST_IMAGE: ${{ matrix.image }}
         run: |
-          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" \
+          docker run --pull=never --rm -v "$GITHUB_WORKSPACE:/repo:ro" \
             -v "$RUNNER_TEMP/caddy-core:/core:ro" \
             -e CADDY_TEST_BINARY=/core/caddy -w /repo "$TEST_IMAGE" sh -ec '
               if command -v apk >/dev/null; then apk add --no-cache bash; fi
@@ -38,3 +48,25 @@ jobs:
               bash -n caddy.sh
               python3 -m unittest discover -s tests -v
             '
+
+  site:
+    name: Static page browser checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser test library and Chinese fonts
+        run: |
+          npm install --prefix "$RUNNER_TEMP/site-check" --no-audit --no-fund playwright@1.62.1
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Check desktop and mobile layouts
+        run: |
+          NODE_PATH="$RUNNER_TEMP/site-check/node_modules" node tests/test_site.cjs
+      - name: Save page previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-previews
+          path: site-screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 7

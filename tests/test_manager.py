@@ -128,6 +128,40 @@ service_file() {{ echo {shlex.quote(str(self.root/'service'))}; }}
         self.shell(f'data_tool export {p} {self.root}/missing {out} US {out}')
         self.assertIn(':5555#HK',out.read_text())
         self.assertEqual(out.stat().st_mode&0o777,0o600)
+        config['apps']['http']['servers']['srv0']['listen']=[':443'];p.write_text(json.dumps(config))
+        self.shell(f'data_tool export {p} {self.root}/missing {out} US {out}')
+        link,client=out.read_text().split('\n\n')
+        self.assertEqual(link,'naive+https://name:p%40ss%3A%2F%3F@proxy.example.com#HK')
+        self.assertEqual(json.loads(client)['proxy'],'https://name:p%40ss%3A%2F%3F@proxy.example.com')
+    def test_site_staging_downloads_missing_page_and_preserves_custom_page(self):
+        site=self.root/'data/naive-site';site.mkdir(parents=True)
+        adapted=self.root/'adapted.json'
+        adapted.write_text(json.dumps({'handler':'file_server','root':str(site)}))
+        staged=self.root/'index.html';index=site/'index.html'
+        fetch=f'curl() {{ cp {shlex.quote(str(ROOT/"index.html"))} "${{@: -1}}"; }}; '
+        self.shell(fetch+f'stage_site {self.root}')
+        self.assertEqual(staged.read_bytes(),(ROOT/'index.html').read_bytes());staged.unlink()
+        index.write_text('my custom homepage')
+        self.shell('curl() { echo BAD; return 1; }; '+f'stage_site {self.root}')
+        self.assertFalse(staged.exists());self.assertEqual(index.read_text(),'my custom homepage')
+        index.unlink();index.symlink_to(ROOT/'index.html')
+        self.shell(fetch+f'stage_site {self.root}',status=1)
+    def test_site_placeholder_migration_and_nonstatic_configuration(self):
+        site=self.root/'data/naive-site';site.mkdir(parents=True)
+        index=site/'index.html'
+        index.write_text('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome</title><body><h1>Welcome</h1><p>This website is available over HTTPS.</p></body></html>\n')
+        adapted=self.root/'adapted.json'
+        adapted.write_text(json.dumps({'handler':'file_server','root':str(site)}))
+        self.assertEqual(self.shell(f'data_tool site-needed {adapted} {site}').stdout.strip(),'yes')
+        adapted.write_text('{"handler":"reverse_proxy"}')
+        self.shell('curl() { echo BAD; return 1; }; '+f'stage_site {self.root}')
+        self.assertFalse((self.root/'index.html').exists())
+    def test_site_check_rejects_truncated_or_error_responses(self):
+        page=self.root/'bad.html'
+        for value in ('','404: Not Found','<html><head><title>Error</title></head><body>Bad gateway</body></html>', '<html><head><title>T</title></head><body><main>truncated', 'x'*524289):
+            page.write_text(value)
+            self.shell(f'data_tool site-check {page}',status=1)
+        self.shell(f'data_tool site-check {shlex.quote(str(ROOT/"index.html"))}')
     def transaction_stubs(self):
         (self.root/'bin').mkdir();(self.root/'etc').mkdir();(self.root/'data/naive-site').mkdir(parents=True);(self.root/'cron').mkdir()
         for path in ('bin/caddy','etc/Caddyfile','etc/config.txt','service'):
@@ -139,20 +173,28 @@ get_system_type() { echo debian; }; prepare_account() { :; }; binary_capability(
 is_running() { return 0; }; is_enabled() { return 0; }; validate_config() { :; }
 chown() { :; }; configure_rotation() { :; }; reload_manager() { :; }; enable_service() { :; }; wait_running() { :; }
 download_core() { printf '#!/bin/sh\nexit 0\n' > "$1/caddy"; chmod 755 "$1/caddy"; }
-export_stage() { echo new-client > "$3/clients"; echo '{}' > "$3/clients.meta"; }
+export_stage() { echo new-client > "$3/clients"; echo '{}' > "$3/clients.meta"; echo '{}' > "$3/adapted.json"; }
 '''
     def test_failed_update_restores_binary_config_and_running_state(self):
         setup=self.transaction_stubs()
+        (self.root/'data/naive-site/index.html').write_text('old-site')
+        setup+='stage_site() { echo new-site > "$1/index.html"; }; '
         setup+='service_action() { echo "$1" >> "$DATA_DIR/calls"; [ "$1" != restart ]; }; install_or_update update'
         self.shell(setup,status=1)
         for path in ('bin/caddy','etc/Caddyfile','etc/config.txt','service'):
             self.assertEqual((self.root/path).read_text(),'old-'+path)
         self.assertFalse((self.root/'etc/naive-manager.json').exists())
+        self.assertEqual((self.root/'data/naive-site/index.html').read_text(),'old-site')
         self.assertEqual((self.root/'data/calls').read_text().splitlines(),['restart','stop','start'])
         self.assertFalse(list((self.root/'bin').glob('.naive-install.*')))
     def test_download_failure_does_not_stop_running_service(self):
         setup=self.transaction_stubs()
         r=self.shell(setup+'download_core() { return 1; }; service_action() { echo BAD; }; install_or_update update',status=1)
+        self.assertNotIn('BAD',r.stdout)
+        self.assertEqual((self.root/'bin/caddy').read_text(),'old-bin/caddy')
+    def test_site_download_failure_does_not_stop_running_service(self):
+        setup=self.transaction_stubs()
+        r=self.shell(setup+'stage_site() { return 1; }; service_action() { echo BAD; }; install_or_update update',status=1)
         self.assertNotIn('BAD',r.stdout)
         self.assertEqual((self.root/'bin/caddy').read_text(),'old-bin/caddy')
     def test_update_preserves_stopped_and_disabled_state(self):
@@ -168,6 +210,7 @@ chown() { :; }; binary_capability() { :; }; validate_config() { :; }
 is_running() { return 1; }; is_enabled() { return 1; }; enable_service() { :; }; reload_manager() { :; }; configure_rotation() { :; }
 download_core() { printf '#!/bin/sh\\nexit 0\\n' > "$1/caddy"; chmod 755 "$1/caddy"; }
 export_stage() { echo new-client > "$3/clients"; echo '{}' > "$3/clients.meta"; }
+stage_site() { echo new-site > "$1/index.html"; }
 service_action() { [ "$1" != restart ]; }
 install_or_update install'''
         self.shell(setup,data='proxy.example.com\n\n',status=1)
@@ -222,11 +265,15 @@ class CoreTests(unittest.TestCase):
                 command=f'source {shlex.quote(str(SCRIPT))}; data_tool export "$1/adapted.json" "$1/missing" "$1/missing" HK "$1/clients"'
                 r=subprocess.run(['bash','-c',command,'_',d],capture_output=True,text=True,env=env)
                 self.assertEqual(r.returncode,0,r.stderr)
+                needed=subprocess.run(['bash','-c',f'source {shlex.quote(str(SCRIPT))}; data_tool site-needed "$1/adapted.json" "$1/site"','_',d],capture_output=True,text=True)
+                self.assertEqual(needed.returncode,0,needed.stderr)
+                self.assertEqual(needed.stdout.strip(),'no' if path.name.startswith('legacy') else 'yes')
                 value=(root/'clients').read_text()
-                self.assertIn(':34567#HK' if path.name.startswith('legacy') else ':443#HK',value)
+                self.assertIn(':34567#HK' if path.name.startswith('legacy') else '@proxy.example.com#HK',value)
                 if path.name.startswith('legacy'): self.assertIn('old-user:old-pass@',value)
                 else:
                     config=json.loads(adapted.read_text())
                     self.assertEqual(config['apps']['http'].get('http_port',80),80)
 
 if __name__=='__main__':unittest.main()
+

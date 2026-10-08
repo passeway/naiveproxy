@@ -180,7 +180,9 @@ try:
     elif action=='export':
         adapted,metadata,previous,name,target=args
         info=connection(json.loads(Path(adapted).read_text()))
-        if Path(metadata).is_file(): name=json.loads(Path(metadata).read_text()).get('name',name)
+        saved={}
+        if Path(metadata).is_file():
+            saved=json.loads(Path(metadata).read_text());name=saved.get('name',name)
         elif Path(previous).is_file():
             for line in Path(previous).read_text().splitlines():
                 if line.startswith('naive+https://'): name=unquote(urlsplit(line).fragment) or name;break
@@ -191,20 +193,36 @@ try:
         value='naive+https://'+authority+'#'+quote(name,safe='')+'\n\n'
         value+=json.dumps({'listen':'socks://127.0.0.1:1080','proxy':'https://'+authority},indent=2)+'\n'
         Path(target).write_text(value);os.chmod(target,0o600)
-        write(target+'.meta',{'project':'passeway/naiveproxy','schema':1,'name':name})
-    elif action=='site-needed':
-        adapted,root=args
+        updated={'project':'passeway/naiveproxy','schema':1,'name':name}
+        digest=saved.get('site_sha256')
+        if isinstance(digest,str) and re.fullmatch(r'[0-9a-f]{64}',digest): updated['site_sha256']=digest
+        write(target+'.meta',updated)
+    elif action=='site-state':
+        adapted,root,metadata=args
         config=json.loads(Path(adapted).read_text());page=Path(root,'index.html')
         serves_site=any(x.get('handler')=='file_server' and x.get('root')==root for x in walk(config))
-        # Only replace the exact placeholder shipped by the previous manager.
-        placeholder='d2b54e71ba979152b43c114f1fb783d441c8a40116aa6d2212179bdd9912b796'
-        if not serves_site: print('no')
+        # Adopt the exact default pages shipped before checksum tracking existed.
+        known={
+            'd2b54e71ba979152b43c114f1fb783d441c8a40116aa6d2212179bdd9912b796',
+            '7ef37ce4b01b32deb4001b77e0909a5bd65b17d02f7429624d555068510ce037',
+        }
+        if Path(metadata).is_file():
+            saved=json.loads(Path(metadata).read_text());digest=saved.get('site_sha256')
+            if saved.get('project')=='passeway/naiveproxy' and isinstance(digest,str): known.add(digest)
+        if not serves_site: print('skip')
         elif page.is_symlink(): raise ValueError('站点首页不能是符号链接')
-        elif not page.exists(): print('yes')
+        elif not page.exists(): print('missing')
         elif page.is_file():
-            old=page.stat().st_size<4096 and hashlib.sha256(page.read_bytes()).hexdigest()==placeholder
-            print('yes' if old else 'no')
+            managed=page.stat().st_size<=512*1024 and hashlib.sha256(page.read_bytes()).hexdigest() in known
+            print('managed' if managed else 'skip')
         else: raise ValueError('站点首页不是普通文件')
+    elif action=='site-record':
+        metadata,page,current=args
+        content=Path(page).read_bytes();updated=json.loads(Path(metadata).read_text())
+        updated['site_sha256']=hashlib.sha256(content).hexdigest();write(metadata,updated)
+        live=Path(current)
+        same=live.is_file() and live.stat().st_size==len(content) and live.read_bytes()==content
+        print('same' if same else 'changed')
     elif action=='site-check':
         from html.parser import HTMLParser
         page=Path(args[0])
@@ -274,12 +292,26 @@ download_core() {
 }
 validate_config() { "$1" validate --config "$2" --adapter caddyfile >/dev/null; }
 stage_site() {
-    local stage="$1" needed
-    needed=$(data_tool site-needed "$stage/adapted.json" "$DATA_DIR/naive-site") || return 1
-    [ "$needed" = yes ] || return 0
-    curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 10 --max-time 40 \
-        --max-filesize 524288 "$SITE_URL" -o "$stage/index.html" || { fail '站点首页下载失败'; return 1; }
-    data_tool site-check "$stage/index.html" || return 1
+    local stage="$1" state result downloaded=no current="$DATA_DIR/naive-site/index.html"
+    state=$(data_tool site-state "$stage/adapted.json" "$DATA_DIR/naive-site" "$META_FILE") || return 1
+    [ "$state" != skip ] || return 0
+    if curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 --connect-timeout 10 --max-time 40 \
+        --max-filesize 524288 "$SITE_URL" -o "$stage/index.html.download" &&
+        data_tool site-check "$stage/index.html.download"; then downloaded=yes; fi
+    # A user may edit the page while the network request is in progress.
+    state=$(data_tool site-state "$stage/adapted.json" "$DATA_DIR/naive-site" "$META_FILE") || return 1
+    if [ "$state" = skip ]; then rm -f "$stage/index.html.download"; return $?; fi
+    if [ "$downloaded" = yes ]; then
+        result=$(data_tool site-record "$stage/clients.meta" "$stage/index.html.download" "$current") || return 1
+        if [ "$result" = changed ]; then mv -f "$stage/index.html.download" "$stage/index.html" || return 1
+        else rm -f "$stage/index.html.download" || return 1; fi
+    else
+        rm -f "$stage/index.html.download" || return 1
+        if [ "$state" = managed ] && [ -f "$current" ]; then
+            data_tool site-record "$stage/clients.meta" "$current" "$current" >/dev/null || return 1
+            echo '首页更新未完成，已保留原页面；继续更新内核。' >&2
+        else fail '站点首页下载或检查失败'; return 1; fi
+    fi
 }
 prepare_account() {
     if ! getent group caddy >/dev/null; then

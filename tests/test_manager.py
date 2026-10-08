@@ -133,10 +133,17 @@ service_file() {{ echo {shlex.quote(str(self.root/'service'))}; }}
         link,client=out.read_text().split('\n\n')
         self.assertEqual(link,'naive+https://name:p%40ss%3A%2F%3F@proxy.example.com#HK')
         self.assertEqual(json.loads(client)['proxy'],'https://name:p%40ss%3A%2F%3F@proxy.example.com')
+        metadata=self.root/'metadata.json'
+        metadata.write_text(json.dumps({'project':'passeway/naiveproxy','name':'US','site_sha256':'a'*64}))
+        self.shell(f'data_tool export {p} {metadata} {out} HK {out}')
+        saved=json.loads(Path(str(out)+'.meta').read_text())
+        self.assertEqual(saved['site_sha256'],'a'*64)
+        self.assertEqual(saved['name'],'US')
     def test_site_staging_downloads_missing_page_and_preserves_custom_page(self):
         site=self.root/'data/naive-site';site.mkdir(parents=True)
         adapted=self.root/'adapted.json'
         adapted.write_text(json.dumps({'handler':'file_server','root':str(site)}))
+        (self.root/'clients.meta').write_text('{}')
         staged=self.root/'index.html';index=site/'index.html'
         fetch=f'curl() {{ cp {shlex.quote(str(ROOT/"index.html"))} "${{@: -1}}"; }}; '
         self.shell(fetch+f'stage_site {self.root}')
@@ -152,10 +159,62 @@ service_file() {{ echo {shlex.quote(str(self.root/'service'))}; }}
         index.write_text('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome</title><body><h1>Welcome</h1><p>This website is available over HTTPS.</p></body></html>\n')
         adapted=self.root/'adapted.json'
         adapted.write_text(json.dumps({'handler':'file_server','root':str(site)}))
-        self.assertEqual(self.shell(f'data_tool site-needed {adapted} {site}').stdout.strip(),'yes')
+        self.assertEqual(self.shell(f'data_tool site-state {adapted} {site} {self.root}/missing').stdout.strip(),'managed')
         adapted.write_text('{"handler":"reverse_proxy"}')
         self.shell('curl() { echo BAD; return 1; }; '+f'stage_site {self.root}')
         self.assertFalse((self.root/'index.html').exists())
+    def site_fixture(self):
+        site=self.root/'data/naive-site';site.mkdir(parents=True)
+        index=site/'index.html';index.write_text('<html><head><title>Previous</title></head><body><main>Previous page</main></body></html>')
+        (self.root/'adapted.json').write_text(json.dumps({'handler':'file_server','root':str(site)}))
+        saved={'project':'passeway/naiveproxy','name':'HK','site_sha256':hashlib.sha256(index.read_bytes()).hexdigest()}
+        (self.root/'etc').mkdir()
+        (self.root/'etc/naive-manager.json').write_text(json.dumps(saved))
+        (self.root/'clients.meta').write_text(json.dumps(saved))
+        return index
+    def test_unchanged_managed_site_is_not_rewritten(self):
+        index=self.site_fixture()
+        before=index.stat().st_mtime_ns
+        fetch=f'curl() {{ cp {shlex.quote(str(index))} "${{@: -1}}"; }}; '
+        self.shell(fetch+f'stage_site {self.root}')
+        self.assertFalse((self.root/'index.html').exists())
+        self.assertFalse((self.root/'index.html.download').exists())
+        self.assertEqual(index.stat().st_mtime_ns,before)
+        self.assertEqual(json.loads((self.root/'clients.meta').read_text())['site_sha256'],hashlib.sha256(index.read_bytes()).hexdigest())
+    def test_managed_site_updates_and_keeps_local_customizations(self):
+        index=self.site_fixture()
+        original=index.read_text()
+        fetch=f'curl() {{ cp {shlex.quote(str(ROOT/"index.html"))} "${{@: -1}}"; }}; '
+        self.shell(fetch+f'stage_site {self.root}')
+        staged=self.root/'index.html'
+        self.assertEqual(staged.read_bytes(),(ROOT/'index.html').read_bytes())
+        self.assertEqual(index.read_text(),original)
+        self.assertEqual(json.loads((self.root/'clients.meta').read_text())['site_sha256'],hashlib.sha256(staged.read_bytes()).hexdigest())
+        staged.unlink();index.write_text('user changed this page')
+        result=self.shell('curl() { echo UNEXPECTED_DOWNLOAD; return 1; }; '+f'stage_site {self.root}')
+        self.assertNotIn('UNEXPECTED_DOWNLOAD',result.stdout)
+        self.assertEqual(index.read_text(),'user changed this page')
+        self.assertFalse(staged.exists())
+    def test_site_network_failure_and_invalid_download_keep_existing_page(self):
+        index=self.site_fixture();before=index.read_bytes()
+        for failure in ('curl() { echo partial > "${@: -1}"; return 22; }; ',
+                        'curl() { echo "<html>Error</html>" > "${@: -1}"; }; '):
+            result=self.shell(failure+f'stage_site {self.root}')
+            self.assertIn('已保留原页面',result.stderr)
+            self.assertEqual(index.read_bytes(),before)
+            self.assertFalse((self.root/'index.html').exists())
+            self.assertFalse((self.root/'index.html.download').exists())
+            self.assertEqual(json.loads((self.root/'clients.meta').read_text())['site_sha256'],hashlib.sha256(before).hexdigest())
+        index.unlink()
+        self.shell('curl() { return 22; }; '+f'stage_site {self.root}',status=1)
+        self.assertFalse(index.exists())
+    def test_page_edited_during_download_is_preserved(self):
+        index=self.site_fixture()
+        fetch=f'curl() {{ printf "local edit" > "$DATA_DIR/naive-site/index.html"; cp {shlex.quote(str(ROOT/"index.html"))} "${{@: -1}}"; }}; '
+        self.shell(fetch+f'stage_site {self.root}')
+        self.assertEqual(index.read_text(),'local edit')
+        self.assertFalse((self.root/'index.html').exists())
+        self.assertFalse((self.root/'index.html.download').exists())
     def test_site_check_rejects_truncated_or_error_responses(self):
         page=self.root/'bad.html'
         for value in ('','404: Not Found','<html><head><title>Error</title></head><body>Bad gateway</body></html>', '<html><head><title>T</title></head><body><main>truncated', 'x'*524289):
@@ -178,12 +237,14 @@ export_stage() { echo new-client > "$3/clients"; echo '{}' > "$3/clients.meta"; 
     def test_failed_update_restores_binary_config_and_running_state(self):
         setup=self.transaction_stubs()
         (self.root/'data/naive-site/index.html').write_text('old-site')
+        metadata=self.root/'etc/naive-manager.json'
+        metadata.write_text(json.dumps({'site_sha256':'a'*64}))
         setup+='stage_site() { echo new-site > "$1/index.html"; }; '
         setup+='service_action() { echo "$1" >> "$DATA_DIR/calls"; [ "$1" != restart ]; }; install_or_update update'
         self.shell(setup,status=1)
         for path in ('bin/caddy','etc/Caddyfile','etc/config.txt','service'):
             self.assertEqual((self.root/path).read_text(),'old-'+path)
-        self.assertFalse((self.root/'etc/naive-manager.json').exists())
+        self.assertEqual(json.loads(metadata.read_text()),{'site_sha256':'a'*64})
         self.assertEqual((self.root/'data/naive-site/index.html').read_text(),'old-site')
         self.assertEqual((self.root/'data/calls').read_text().splitlines(),['restart','stop','start'])
         self.assertFalse(list((self.root/'bin').glob('.naive-install.*')))
@@ -265,9 +326,9 @@ class CoreTests(unittest.TestCase):
                 command=f'source {shlex.quote(str(SCRIPT))}; data_tool export "$1/adapted.json" "$1/missing" "$1/missing" HK "$1/clients"'
                 r=subprocess.run(['bash','-c',command,'_',d],capture_output=True,text=True,env=env)
                 self.assertEqual(r.returncode,0,r.stderr)
-                needed=subprocess.run(['bash','-c',f'source {shlex.quote(str(SCRIPT))}; data_tool site-needed "$1/adapted.json" "$1/site"','_',d],capture_output=True,text=True)
+                needed=subprocess.run(['bash','-c',f'source {shlex.quote(str(SCRIPT))}; data_tool site-state "$1/adapted.json" "$1/site" "$1/missing"','_',d],capture_output=True,text=True)
                 self.assertEqual(needed.returncode,0,needed.stderr)
-                self.assertEqual(needed.stdout.strip(),'no' if path.name.startswith('legacy') else 'yes')
+                self.assertEqual(needed.stdout.strip(),'skip' if path.name.startswith('legacy') else 'missing')
                 value=(root/'clients').read_text()
                 self.assertIn(':34567#HK' if path.name.startswith('legacy') else '@proxy.example.com#HK',value)
                 if path.name.startswith('legacy'): self.assertIn('old-user:old-pass@',value)

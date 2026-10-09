@@ -154,7 +154,7 @@ naive+https://USERNAME:PASSWORD@proxy.example.com#HK
 | `/usr/bin/caddy` | 集成 NaïveProxy 模块的 Caddy |
 | `/etc/caddy/Caddyfile` | 服务端配置，权限 `root:caddy 640` |
 | `/etc/caddy/config.txt` | 导出的链接与 JSON，权限 `root:root 600` |
-| `/etc/caddy/naive-manager.json` | 管理标识与节点名称，权限 `root:root 600` |
+| `/etc/caddy/naive-manager.json` | 管理标识、节点名称与默认首页摘要，权限 `root:root 600` |
 | `/var/lib/caddy/naive-site/index.html` | 仓库首页部署位置 |
 | `/etc/systemd/system/caddy.service` | Debian / Ubuntu 服务定义 |
 | `/etc/init.d/caddy` | Alpine 服务定义 |
@@ -164,7 +164,11 @@ naive+https://USERNAME:PASSWORD@proxy.example.com#HK
 
 新安装将仓库的 [index.html](index.html) 部署为静态首页，字体、背景与图标均内置，无第三方资源或统计请求。导航为页面内跳转，内容为静态介绍，不展示伪造的实时监控数据。
 
-使用最新版脚本选择 **5** 更新时，会为默认站点补齐缺失首页，或替换上一版原样的 Welcome 占位页；已有其他首页会保留。页面下载和检查在替换文件、重启服务之前完成，失败时保留原服务。旧版反向代理或自定义站点配置保持不变。可以直接编辑 `/var/lib/caddy/naive-site/index.html` 定制内容，后续更新不会覆盖；静态文件修改无需重启 Caddy。
+使用最新版脚本选择 **5** 更新时，会同步尚未自行修改的默认首页，并补齐缺失页面。脚本记录已部署页面的 SHA-256 摘要；当前文件与记录一致才自动更新，原样的旧 Welcome 页与上一版默认首页也可识别。内容相同时不重写文件，保留修改时间与缓存校验信息。
+
+页面下载和检查在替换文件、重启服务之前完成。有可识别的默认首页时，下载失败会提示并保留原页，继续更新内核；缺失首页时则中止操作，保留原服务。摘要与页面一起参与失败回滚。
+
+可以直接编辑 `/var/lib/caddy/naive-site/index.html` 定制内容，后续更新会保留自定义页面；旧版反向代理或自定义站点配置也保持不变。静态文件修改无需重启 Caddy。
 
 Alpine 使用 `busybox-openrc` 提供定时服务，日志每小时检查一次，超过 1 MiB 时轮转，保留 3 份压缩归档；检查间隔内仍可能增长。程序通过 `cap_net_bind_service` 文件能力绑定低端口，实际运行账户仍为 `caddy`。
 

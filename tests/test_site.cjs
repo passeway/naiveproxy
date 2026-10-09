@@ -46,9 +46,17 @@ async function main() {
       await page.keyboard.press('Enter');
       assert.equal(await page.evaluate(() => document.activeElement.id), 'main');
       assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto');
+      const question = page.locator('.faq-list details').first();
+      await question.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      assert.notEqual(await question.getAttribute('open'), null, `${width}: FAQ keyboard expansion`);
+      assert.equal(await question.locator('p').isVisible(), true);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}: expanded FAQ overflow`);
+      await page.keyboard.press('Space');
+      assert.equal(await question.getAttribute('open'), null, `${width}: FAQ keyboard collapse`);
       assert.deepEqual(external, [], `${width}: external requests`);
       assert.deepEqual(errors, [], `${width}: browser errors`);
-      console.log(`${width}px: layout, navigation, keyboard access, reduced motion and offline assets OK`);
+      console.log(`${width}px: layout, navigation, FAQ keyboard controls, reduced motion and offline assets OK`);
       await context.close();
     }
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 375, height: 812 } });
@@ -57,8 +65,12 @@ async function main() {
     assert.equal(await page.locator('main').isVisible(), true);
     await page.locator('nav a[href="#capabilities"]').click();
     assert.equal(new URL(page.url()).hash, '#capabilities');
+    const question = page.locator('.faq-list details').first();
+    await question.locator('summary').click();
+    assert.notEqual(await question.getAttribute('open'), null);
+    assert.equal(await question.locator('p').isVisible(), true);
     await context.close();
-    console.log('Navigation and content remain available without JavaScript.');
+    console.log('Navigation, content and expandable FAQs remain available without JavaScript.');
   } finally {
     if (browser) await browser.close();
     await new Promise(resolve => server.close(resolve));
